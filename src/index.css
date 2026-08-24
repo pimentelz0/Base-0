@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    border-color: rgba(255, 255, 255, 0.08);
+    box-sizing: border-box;
+  }
+  html {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: #000000;
+    color: #f4f4f5;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-x: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #root {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Custom Scrollbar for sleek dark mode */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #007AFF;
+}
+
+/* Bold Typography Theme Utilities */
+.tracking-tightest {
+  letter-spacing: -0.05em;
+}
+
+.tracking-widest-sub {
+  letter-spacing: 0.25em;
+}
+
+.bg-accent-blue {
+  background-color: #007AFF;
+}
+
+.text-accent-blue {
+  color: #007AFF;
+}
+
+.border-accent-blue {
+  border-color: #007AFF;
+}
+
+/* Electric Glow utilities */
+.glow-blue {
+  box-shadow: 0 0 25px -5px rgba(0, 122, 255, 0.3);
+}
+
+.glow-blue-sm {
+  box-shadow: 0 0 12px -2px rgba(0, 122, 255, 0.25);
+}
+
+.glow-blue-lg {
+  box-shadow: 0 0 45px -10px rgba(0, 122, 255, 0.4);
+}
+
+.text-gradient-blue {
+  background: linear-gradient(135deg, #60a5fa 0%, #007AFF 50%, #0055D4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-radial-ambient {
+  background-image: radial-gradient(circle at 50% -10%, rgba(0, 122, 255, 0.12), transparent 65%);
+}
+
+.grid-bg-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+}
+
