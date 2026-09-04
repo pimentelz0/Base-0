@@ -1,12 +1,15 @@
-import React, { useState } from "react";
-import { Plus, Scale, TrendingDown, TrendingUp, Calendar, Trash2, Trophy, Sparkles, LineChart, ChevronRight, Check } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Scale, TrendingDown, TrendingUp, Calendar, Trash2, Trophy, Sparkles, LineChart, ChevronRight, Check, Loader2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { WeightLog, UserProfile } from "../types";
 import { formatDateBR } from "../utils/calculations";
+import { DateSelector } from "./DateSelector";
 
 interface WeightTrackerProps {
   logs: WeightLog[];
   profile: UserProfile;
+  selectedDate?: string;
+  onChangeDate?: (dateStr: string) => void;
   onAddLog: (newLog: Omit<WeightLog, "id">) => void;
   onDeleteLog: (id: string) => void;
 }
@@ -14,20 +17,40 @@ interface WeightTrackerProps {
 export const WeightTracker: React.FC<WeightTrackerProps> = ({
   logs,
   profile,
+  selectedDate,
+  onChangeDate,
   onAddLog,
   onDeleteLog,
 }) => {
+  const todayStr = new Date().toISOString().split("T")[0];
+  const effectiveDate = selectedDate || todayStr;
+
   const [isAdding, setIsAdding] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newWeight, setNewWeight] = useState<string>(String(profile.currentWeight || ""));
-  const [date, setDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState<string>(effectiveDate);
   const [note, setNote] = useState<string>("");
+
+  useEffect(() => {
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  }, [selectedDate]);
+
+  // Find if there is a log on the selected date
+  const selectedDateLog = logs.find((l) => l.date.startsWith(effectiveDate));
 
   // Sort logs by date ascending for chart and analysis
   const sortedLogsAsc = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const sortedLogsDesc = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const currentWeight = profile.currentWeight;
-  const startWeight = sortedLogsAsc.length > 0 ? sortedLogsAsc[0].weight : currentWeight;
+  const startWeight =
+    profile.startWeight !== undefined && profile.startWeight !== null && profile.startWeight > 0
+      ? profile.startWeight
+      : sortedLogsAsc.length > 0
+      ? sortedLogsAsc[0].weight
+      : currentWeight;
   const startDate = sortedLogsAsc.length > 0 ? sortedLogsAsc[0].date : profile.createdAt;
   const targetWeight = profile.targetWeight;
 
@@ -42,13 +65,16 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
     progressPercentage = Math.min(100, Math.max(0, Math.round((distanceCovered / totalDistance) * 100)));
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const weightVal = parseFloat(newWeight);
     if (!weightVal || isNaN(weightVal)) return;
 
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     onAddLog({
-      date: new Date(date).toISOString(),
+      date: new Date(`${date}T12:00:00`).toISOString(),
       weight: weightVal,
       note: note.trim() || undefined,
     });
@@ -67,9 +93,15 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
       }
     }
 
+    setIsSaving(false);
     setNote("");
     setIsAdding(false);
   };
+
+  // Formatted date string for label
+  const [y, m, d] = effectiveDate.split("-");
+  const formattedDate = `${d}/${m}/${y}`;
+  const isToday = effectiveDate === todayStr;
 
   // Generate SVG Path for the interactive chart
   const minWeight = Math.min(...sortedLogsAsc.map((l) => l.weight), targetWeight || currentWeight) - 1.5;
@@ -93,25 +125,93 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Date Selector */}
+      <DateSelector
+        selectedDate={effectiveDate}
+        onChangeDate={(newDate) => {
+          onChangeDate?.(newDate);
+          setDate(newDate);
+        }}
+      />
+
       {/* Header and Quick Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-900 pb-5">
         <div>
           <h2 className="text-2xl font-black text-white font-['Outfit',sans-serif]">
-            Evolução de Peso
+            Pesagem & Evolução de Peso
           </h2>
           <p className="text-xs text-zinc-400 mt-1">
-            Histórico de pesagens e ritmo de progresso.
+            Atualize seu peso para qualquer dia e acompanhe o comparativo direto do peso inicial até sua meta.
           </p>
         </div>
 
         <button
           id="open-add-weight-btn"
-          onClick={() => setIsAdding(!isAdding)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all self-start sm:self-auto shadow-sm"
+          onClick={() => {
+            setDate(effectiveDate);
+            setIsAdding(!isAdding);
+          }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black transition-all self-start sm:self-auto shadow-md shadow-[#007AFF]/20 cursor-pointer active:scale-95"
         >
-          <Plus className="w-4 h-4" />
-          <span>Registrar Peso</span>
+          <Scale className="w-4 h-4 stroke-[2.5]" />
+          <span>Nova Pesagem {isToday ? "" : `(${formattedDate})`}</span>
         </button>
+      </div>
+
+      {/* Selected Date Status Card */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-zinc-950 border border-zinc-800/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-[#007AFF]">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] uppercase font-mono font-bold text-zinc-500 block">
+              Registro para {formattedDate} {isToday ? "(Hoje)" : ""}
+            </span>
+            {selectedDateLog ? (
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-black text-white font-mono">
+                  {selectedDateLog.weight} <span className="text-xs text-zinc-500">kg</span>
+                </span>
+                {selectedDateLog.note && (
+                  <span className="text-xs text-zinc-400 italic">
+                    — "{selectedDateLog.note}"
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                Nenhum peso registrado nesta data específica.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {!selectedDateLog ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDate(effectiveDate);
+              setIsAdding(true);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-[#007AFF] hover:text-white transition-colors cursor-pointer self-start sm:self-auto"
+          >
+            + Registrar Peso em {formattedDate}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-emerald-400 font-mono font-bold flex items-center gap-1">
+              <Check className="w-3.5 h-3.5" /> Registrado
+            </span>
+            <button
+              onClick={() => onDeleteLog(selectedDateLog.id)}
+              className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-950/30 rounded-xl transition-colors cursor-pointer"
+              title="Excluir este registro"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add Weight Form Card */}
@@ -189,9 +289,17 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
             <button
               type="submit"
               id="confirm-weight-log-btn"
-              className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black uppercase tracking-wider shadow-md shadow-[#007AFF]/20"
+              disabled={isSaving}
+              className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-70 disabled:cursor-not-allowed text-black text-xs font-black uppercase tracking-wider shadow-md shadow-[#007AFF]/20 flex items-center gap-2 cursor-pointer active:scale-95"
             >
-              Salvar Registro
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" />
+                  <span>Salvando...</span>
+                </>
+              ) : (
+                <span>Salvar Registro</span>
+              )}
             </button>
           </div>
         </form>

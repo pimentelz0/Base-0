@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { Check, Flame, Target, Activity, Droplets, Sparkles, User, HelpCircle } from "lucide-react";
+import { Check, Flame, Target, Activity, Droplets, Sparkles, User, Scale, ArrowLeft, Loader2 } from "lucide-react";
 import { UserProfile, ActivityLevel, FitnessGoal, CalculatedMetrics } from "../types";
 import { ACTIVITY_LABELS, GOAL_LABELS, calculateMetrics } from "../utils/calculations";
+import { StorageService } from "../utils/storage";
 
 interface GymProfileSettingsProps {
   profile: UserProfile;
   metrics: CalculatedMetrics;
   onUpdateProfile: (updated: UserProfile) => void;
+  onNavigateSection?: (section: "overview" | "weight" | "meals" | "profile" | "measurements" | "gulinha") => void;
 }
 
 export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
   profile,
-  metrics,
   onUpdateProfile,
+  onNavigateSection,
 }) => {
   const [formData, setFormData] = useState<UserProfile>(profile);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setFormData(profile);
@@ -24,17 +27,31 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
   // Preview real-time calculated metrics as user adjusts values
   const previewMetrics = calculateMetrics(formData);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onUpdateProfile({
+  const handleSave = async () => {
+    setIsSaving(true);
+    const cleanedProfile: UserProfile = {
       ...formData,
+      name: formData.name.trim() || profile.name || "Atleta Base 0",
+      height: Number(formData.height) || 175,
+      age: Number(formData.age) || 25,
+      startWeight: Number(formData.startWeight) || Number(formData.currentWeight) || 75,
+      currentWeight: Number(formData.currentWeight) || 75,
+      targetWeight: formData.targetWeight ? Number(formData.targetWeight) : undefined,
       isConfigured: true,
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    // Small delay to ensure clear visual loading feedback
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    onUpdateProfile(cleanedProfile);
+    StorageService.saveProfile(cleanedProfile);
+
+    setIsSaving(false);
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
-    }, 3000);
+    }, 4000);
   };
 
   return (
@@ -42,32 +59,49 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-900 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-white font-['Outfit']">
-              Perfil Físico & Metas Nutricionais
-            </h2>
-            <span className="px-2 py-0.5 rounded-md bg-[#007AFF]/10 border border-[#007AFF]/30 text-[#007AFF] text-[10px] font-mono font-bold">
-              GYM
-            </span>
-          </div>
+          <h2 className="text-2xl font-black text-white font-['Outfit']">
+            Perfil Físico & Metas Nutricionais
+          </h2>
           <p className="text-xs text-zinc-400 mt-1">
             Configure seus dados biométricos para o cálculo automático de TMB, TDEE, macros e hidratação.
           </p>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black transition-all shadow-md shadow-[#007AFF]/20 self-start sm:self-auto"
-        >
-          <Check className="w-4 h-4 stroke-[3]" />
-          <span>Salvar Perfil</span>
-        </button>
+        {onNavigateSection && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => onNavigateSection("overview")}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition-all border border-zinc-800 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Voltar</span>
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Success Notification Alert */}
       {savedSuccess && (
-        <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-fadeIn">
-          <Check className="w-4 h-4 text-emerald-400" />
-          <span>Perfil físico e metas atualizados com sucesso!</span>
+        <div className="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-bold flex items-center justify-between gap-3 animate-fadeIn shadow-lg shadow-emerald-950/40">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+              <Check className="w-4 h-4 stroke-[3]" />
+            </div>
+            <div>
+              <p className="font-black text-emerald-200">Perfil e metas atualizados com sucesso!</p>
+              <p className="text-[11px] text-emerald-400/80 font-normal">Todas as métricas, gasto calórico e comparativo de peso foram recalculados.</p>
+            </div>
+          </div>
+          {onNavigateSection && (
+            <button
+              type="button"
+              onClick={() => onNavigateSection("overview")}
+              className="px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-xs font-black hover:bg-emerald-400 transition-colors"
+            >
+              Ver Visão Geral
+            </button>
+          )}
         </div>
       )}
 
@@ -115,15 +149,14 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
       </div>
 
       {/* Main Settings Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+            <label className="block text-xs font-bold text-zinc-300 mb-1.5 font-['Outfit'] uppercase tracking-wider">
               Nome / Apelido
             </label>
             <input
               type="text"
-              required
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
@@ -134,8 +167,8 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-              Sexo Biológico (Fórmula Harris-Benedict)
+            <label className="block text-xs font-bold text-zinc-300 mb-1.5 font-['Outfit'] uppercase tracking-wider">
+              Sexo Biológico (Harris-Benedict)
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -167,14 +200,13 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
         {/* Biometrics row: Height & Age */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+            <label className="block text-xs font-bold text-zinc-300 mb-1.5 font-['Outfit'] uppercase tracking-wider">
               Altura (cm)
             </label>
             <input
               type="number"
               min="100"
               max="250"
-              required
               value={formData.height || ""}
               onChange={(e) =>
                 setFormData({
@@ -188,14 +220,13 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+            <label className="block text-xs font-bold text-zinc-300 mb-1.5 font-['Outfit'] uppercase tracking-wider">
               Idade (anos)
             </label>
             <input
               type="number"
               min="12"
               max="100"
-              required
               value={formData.age || ""}
               onChange={(e) =>
                 setFormData({
@@ -210,19 +241,22 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
         </div>
 
         {/* Weights Section: Peso Inicial, Peso Atual, Meta de Peso */}
-        <div className="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/90 space-y-3">
-          <div>
-            <span className="text-xs font-black uppercase text-white font-['Outfit'] tracking-wide">
-              Controle e Metas de Peso
-            </span>
-            <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
-              O peso inicial serve como ponto de partida oficial para o cálculo de ganho ou perda de peso.
-            </p>
+        <div className="p-5 rounded-2xl bg-zinc-950/90 border border-zinc-800/90 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs font-black uppercase text-white font-['Outfit'] tracking-wider flex items-center gap-2">
+                <Scale className="w-4 h-4 text-[#007AFF]" />
+                Controle e Metas de Peso
+              </span>
+              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                O peso inicial serve como ponto de partida oficial para o cálculo de ganho ou perda de peso.
+              </p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+              <label className="block text-xs font-bold text-zinc-300 mb-1.5 font-['Outfit'] uppercase tracking-wider">
                 Peso Inicial (kg)
               </label>
               <input
@@ -230,7 +264,6 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                 step="0.1"
                 min="30"
                 max="300"
-                required
                 value={formData.startWeight || ""}
                 onChange={(e) => {
                   const w = parseFloat(e.target.value) || 0;
@@ -245,7 +278,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#007AFF] mb-1.5">
+              <label className="block text-xs font-bold text-[#007AFF] mb-1.5 font-['Outfit'] uppercase tracking-wider">
                 Peso Atual (kg)
               </label>
               <input
@@ -253,7 +286,6 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                 step="0.1"
                 min="30"
                 max="300"
-                required
                 value={formData.currentWeight || ""}
                 onChange={(e) => {
                   const w = parseFloat(e.target.value) || 0;
@@ -262,13 +294,13 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                     currentWeight: w,
                   });
                 }}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-[#007AFF]/50 text-white text-sm focus:border-[#007AFF] outline-none font-mono font-bold"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-[#007AFF]/60 text-white text-sm focus:border-[#007AFF] outline-none font-mono font-bold"
                 placeholder="Ex: 114.0"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+              <label className="block text-xs font-bold text-zinc-300 mb-1.5 font-['Outfit'] uppercase tracking-wider">
                 Meta de Peso (kg)
               </label>
               <input
@@ -294,7 +326,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+            <label className="block text-xs font-bold text-zinc-300 mb-1.5 font-['Outfit'] uppercase tracking-wider">
               Nível de Atividade Física
             </label>
             <select
@@ -317,14 +349,14 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-zinc-300 mb-2">
+          <label className="block text-xs font-bold text-zinc-300 mb-2 font-['Outfit'] uppercase tracking-wider">
             Objetivo Principal
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {Object.entries(GOAL_LABELS).map(([key, info]) => {
               const isSelected = formData.goal === key;
               return (
-                <label
+                <div
                   key={key}
                   onClick={() =>
                     setFormData({
@@ -355,22 +387,45 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                       {info.desc}
                     </div>
                   </div>
-                </label>
+                </div>
               );
             })}
           </div>
         </div>
 
-        <div className="pt-2 flex justify-end">
+        <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 border-t border-zinc-900">
+          {onNavigateSection && (
+            <button
+              type="button"
+              onClick={() => onNavigateSection("weight")}
+              className="px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition-all border border-zinc-800 flex items-center justify-center gap-2"
+            >
+              <Scale className="w-4 h-4 text-[#007AFF]" />
+              <span>Ir para Pesagem & Evolução</span>
+            </button>
+          )}
+
           <button
-            type="submit"
-            className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black transition-all shadow-md shadow-[#007AFF]/20 flex items-center gap-2"
+            type="button"
+            id="save-gym-profile-bottom-btn"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-7 py-3 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-70 disabled:cursor-not-allowed text-black text-xs font-black transition-all shadow-lg shadow-[#007AFF]/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
           >
-            <Check className="w-4 h-4 stroke-[3]" />
-            <span>Salvar Perfil & Recalcular Metas</span>
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" />
+                <span>Salvando alterações...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Salvar Alterações</span>
+              </>
+            )}
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 };

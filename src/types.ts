@@ -1,3 +1,11 @@
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
 export type Gender = "male" | "female";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
 export type FitnessGoal = "lose_fat" | "maintain" | "build_muscle" | "recomposition";
@@ -11,6 +19,8 @@ export interface UserMeasurements {
   rightThigh?: number; // cm
   leftThigh?: number; // cm
   calves?: number; // cm
+  shoulders?: number; // cm
+  neck?: number; // cm
   bodyFatPercentage?: number; // %
 }
 
@@ -103,4 +113,43 @@ export interface NoteItem {
   category?: string;
   checklist?: { id: string; text: string; done: boolean }[];
   updatedAt?: string;
+}
+
+export interface WorkoutSet {
+  id: string;
+  setNumber: number;
+  reps: number;
+  weight: number; // in kg
+  completed: boolean;
+}
+
+export interface WorkoutExercise {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  sets: WorkoutSet[];
+  restSeconds?: number;
+  notes?: string;
+}
+
+export interface WorkoutRoutine {
+  id: string;
+  name: string; // e.g., "Treino A - Peitoral & Tríceps"
+  targetMuscles: string;
+  exercises: WorkoutExercise[];
+  color?: string;
+  updatedAt?: string;
+}
+
+export interface WorkoutSessionLog {
+  id: string;
+  routineId?: string;
+  routineName: string;
+  date: string; // YYYY-MM-DD
+  startTime?: string;
+  endTime?: string;
+  durationMinutes: number;
+  totalVolumeKg: number;
+  completedSetsCount: number;
+  notes?: string;
 }

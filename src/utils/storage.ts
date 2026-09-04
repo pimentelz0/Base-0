@@ -1,12 +1,15 @@
-import { UserProfile, WeightLog, MealLog, ChatMessage, NoteItem } from "../types";
+import { UserProfile, WeightLog, MealLog, ChatMessage, NoteItem, AuthUser, WorkoutRoutine, WorkoutSessionLog } from "../types";
 
 const KEYS = {
+  AUTH_USER: "base0_auth_user_v1",
   PROFILE: "base0_profile_v1",
   WEIGHT_LOGS: "base0_weight_logs_v1",
   MEAL_LOGS: "base0_meal_logs_v1",
   CHAT_MESSAGES: "base0_chat_messages_v1",
   WATER_INTAKE: "base0_water_intake_v1",
   NOTES: "base0_notes_v1",
+  WORKOUT_ROUTINES: "base0_workout_routines_v1",
+  WORKOUT_LOGS: "base0_workout_logs_v1",
 };
 
 export const DEFAULT_PROFILE: UserProfile = {
@@ -161,6 +164,221 @@ export const INITIAL_NOTES: NoteItem[] = [
   },
 ];
 
+export const INITIAL_WORKOUT_ROUTINES: WorkoutRoutine[] = [
+  {
+    id: "routine-a",
+    name: "Treino A - Peitoral, Ombros & Tríceps",
+    targetMuscles: "Peitoral Maior, Deltoide Anterior/Lateral, Tríceps Braquial",
+    color: "#007AFF",
+    exercises: [
+      {
+        id: "ex-1",
+        name: "Supino Reto com Barra",
+        muscleGroup: "Peitoral",
+        restSeconds: 90,
+        sets: [
+          { id: "s-1-1", setNumber: 1, reps: 12, weight: 60, completed: true },
+          { id: "s-1-2", setNumber: 2, reps: 10, weight: 70, completed: true },
+          { id: "s-1-3", setNumber: 3, reps: 8, weight: 80, completed: false },
+          { id: "s-1-4", setNumber: 4, reps: 6, weight: 85, completed: false },
+        ],
+      },
+      {
+        id: "ex-2",
+        name: "Supino Inclinado com Halteres",
+        muscleGroup: "Peitoral Superior",
+        restSeconds: 75,
+        sets: [
+          { id: "s-2-1", setNumber: 1, reps: 12, weight: 24, completed: false },
+          { id: "s-2-2", setNumber: 2, reps: 10, weight: 26, completed: false },
+          { id: "s-2-3", setNumber: 3, reps: 10, weight: 26, completed: false },
+        ],
+      },
+      {
+        id: "ex-3",
+        name: "Desenvolvimento com Halteres",
+        muscleGroup: "Ombros (Deltoide)",
+        restSeconds: 75,
+        sets: [
+          { id: "s-3-1", setNumber: 1, reps: 12, weight: 18, completed: false },
+          { id: "s-3-2", setNumber: 2, reps: 10, weight: 20, completed: false },
+          { id: "s-3-3", setNumber: 3, reps: 8, weight: 22, completed: false },
+        ],
+      },
+      {
+        id: "ex-4",
+        name: "Elevação Lateral com Halteres",
+        muscleGroup: "Ombros Lateral",
+        restSeconds: 60,
+        sets: [
+          { id: "s-4-1", setNumber: 1, reps: 15, weight: 10, completed: false },
+          { id: "s-4-2", setNumber: 2, reps: 12, weight: 12, completed: false },
+          { id: "s-4-3", setNumber: 3, reps: 12, weight: 12, completed: false },
+        ],
+      },
+      {
+        id: "ex-5",
+        name: "Tríceps Corda no Pulley",
+        muscleGroup: "Tríceps",
+        restSeconds: 60,
+        sets: [
+          { id: "s-5-1", setNumber: 1, reps: 15, weight: 25, completed: false },
+          { id: "s-5-2", setNumber: 2, reps: 12, weight: 30, completed: false },
+          { id: "s-5-3", setNumber: 3, reps: 10, weight: 35, completed: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: "routine-b",
+    name: "Treino B - Costas, Trapézio & Bíceps",
+    targetMuscles: "Dorsais, Trapézio, Bíceps & Antebraço",
+    color: "#38bdf8",
+    exercises: [
+      {
+        id: "ex-b1",
+        name: "Puxada Frontal Aberta (Pulldown)",
+        muscleGroup: "Costas",
+        restSeconds: 90,
+        sets: [
+          { id: "sb-1-1", setNumber: 1, reps: 12, weight: 55, completed: false },
+          { id: "sb-1-2", setNumber: 2, reps: 10, weight: 65, completed: false },
+          { id: "sb-1-3", setNumber: 3, reps: 8, weight: 75, completed: false },
+        ],
+      },
+      {
+        id: "ex-b2",
+        name: "Remada Curvada com Barra",
+        muscleGroup: "Costas",
+        restSeconds: 90,
+        sets: [
+          { id: "sb-2-1", setNumber: 1, reps: 12, weight: 50, completed: false },
+          { id: "sb-2-2", setNumber: 2, reps: 10, weight: 60, completed: false },
+          { id: "sb-2-3", setNumber: 3, reps: 8, weight: 70, completed: false },
+        ],
+      },
+      {
+        id: "ex-b3",
+        name: "Remada Baixa no Triângulo",
+        muscleGroup: "Dorsais",
+        restSeconds: 60,
+        sets: [
+          { id: "sb-3-1", setNumber: 1, reps: 12, weight: 50, completed: false },
+          { id: "sb-3-2", setNumber: 2, reps: 10, weight: 60, completed: false },
+        ],
+      },
+      {
+        id: "ex-b4",
+        name: "Rosca Direta com Barra W",
+        muscleGroup: "Bíceps",
+        restSeconds: 60,
+        sets: [
+          { id: "sb-4-1", setNumber: 1, reps: 12, weight: 26, completed: false },
+          { id: "sb-4-2", setNumber: 2, reps: 10, weight: 30, completed: false },
+          { id: "sb-4-3", setNumber: 3, reps: 8, weight: 34, completed: false },
+        ],
+      },
+      {
+        id: "ex-b5",
+        name: "Rosca Martelo Alternada",
+        muscleGroup: "Bíceps / Braquial",
+        restSeconds: 60,
+        sets: [
+          { id: "sb-5-1", setNumber: 1, reps: 12, weight: 14, completed: false },
+          { id: "sb-5-2", setNumber: 2, reps: 10, weight: 16, completed: false },
+        ],
+      },
+    ],
+  },
+  {
+    id: "routine-c",
+    name: "Treino C - Pernas Completo & Abdômen",
+    targetMuscles: "Quadríceps, Isquiotibiais, Glúteos, Panturrilhas & Core",
+    color: "#22c55e",
+    exercises: [
+      {
+        id: "ex-c1",
+        name: "Agachamento Livre com Barra",
+        muscleGroup: "Quadríceps & Glúteos",
+        restSeconds: 120,
+        sets: [
+          { id: "sc-1-1", setNumber: 1, reps: 12, weight: 70, completed: false },
+          { id: "sc-1-2", setNumber: 2, reps: 10, weight: 90, completed: false },
+          { id: "sc-1-3", setNumber: 3, reps: 8, weight: 100, completed: false },
+          { id: "sc-1-4", setNumber: 4, reps: 6, weight: 110, completed: false },
+        ],
+      },
+      {
+        id: "ex-c2",
+        name: "Leg Press 45°",
+        muscleGroup: "Membros Inferiores",
+        restSeconds: 90,
+        sets: [
+          { id: "sc-2-1", setNumber: 1, reps: 15, weight: 160, completed: false },
+          { id: "sc-2-2", setNumber: 2, reps: 12, weight: 200, completed: false },
+          { id: "sc-2-3", setNumber: 3, reps: 10, weight: 240, completed: false },
+        ],
+      },
+      {
+        id: "ex-c3",
+        name: "Cadeira Extensora",
+        muscleGroup: "Quadríceps",
+        restSeconds: 60,
+        sets: [
+          { id: "sc-3-1", setNumber: 1, reps: 15, weight: 50, completed: false },
+          { id: "sc-3-2", setNumber: 2, reps: 12, weight: 65, completed: false },
+          { id: "sc-3-3", setNumber: 3, reps: 10, weight: 75, completed: false },
+        ],
+      },
+      {
+        id: "ex-c4",
+        name: "Mesa Flexora",
+        muscleGroup: "Posterior de Coxa",
+        restSeconds: 60,
+        sets: [
+          { id: "sc-4-1", setNumber: 1, reps: 12, weight: 45, completed: false },
+          { id: "sc-4-2", setNumber: 2, reps: 10, weight: 50, completed: false },
+        ],
+      },
+      {
+        id: "ex-c5",
+        name: "Panturrilha em Pé",
+        muscleGroup: "Panturrilhas",
+        restSeconds: 45,
+        sets: [
+          { id: "sc-5-1", setNumber: 1, reps: 20, weight: 60, completed: false },
+          { id: "sc-5-2", setNumber: 2, reps: 15, weight: 75, completed: false },
+          { id: "sc-5-3", setNumber: 3, reps: 15, weight: 80, completed: false },
+        ],
+      },
+    ],
+  },
+];
+
+export const INITIAL_WORKOUT_LOGS: WorkoutSessionLog[] = [
+  {
+    id: "wlog-1",
+    routineId: "routine-a",
+    routineName: "Treino A - Peitoral, Ombros & Tríceps",
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    durationMinutes: 54,
+    totalVolumeKg: 4620,
+    completedSetsCount: 16,
+    notes: "Treino intenso, cargas progredindo com facilidade no supino.",
+  },
+  {
+    id: "wlog-2",
+    routineId: "routine-b",
+    routineName: "Treino B - Costas, Trapézio & Bíceps",
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    durationMinutes: 48,
+    totalVolumeKg: 4180,
+    completedSetsCount: 14,
+    notes: "Puxada com boa cadência e contração das escápulas.",
+  },
+];
+
+
 export const StorageService = {
   getProfile(): UserProfile {
     try {
@@ -251,6 +469,36 @@ export const StorageService = {
     }
   },
 
+  getAuthUser(): AuthUser | null {
+    try {
+      const saved = localStorage.getItem(KEYS.AUTH_USER);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return null;
+  },
+
+  saveAuthUser(user: AuthUser | null): void {
+    try {
+      if (user) {
+        localStorage.setItem(KEYS.AUTH_USER, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(KEYS.AUTH_USER);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  clearAuthUser(): void {
+    try {
+      localStorage.removeItem(KEYS.AUTH_USER);
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
   getNotes(): NoteItem[] {
     try {
       const saved = localStorage.getItem(KEYS.NOTES);
@@ -266,6 +514,54 @@ export const StorageService = {
       localStorage.setItem(KEYS.NOTES, JSON.stringify(notes));
     } catch (e) {
       console.error(e);
+    }
+  },
+
+  getWorkoutRoutines(): WorkoutRoutine[] {
+    try {
+      const saved = localStorage.getItem(KEYS.WORKOUT_ROUTINES);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return INITIAL_WORKOUT_ROUTINES;
+  },
+
+  saveWorkoutRoutines(routines: WorkoutRoutine[]): void {
+    try {
+      localStorage.setItem(KEYS.WORKOUT_ROUTINES, JSON.stringify(routines));
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  getWorkoutLogs(): WorkoutSessionLog[] {
+    try {
+      const saved = localStorage.getItem(KEYS.WORKOUT_LOGS);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return INITIAL_WORKOUT_LOGS;
+  },
+
+  saveWorkoutLogs(logs: WorkoutSessionLog[]): void {
+    try {
+      localStorage.setItem(KEYS.WORKOUT_LOGS, JSON.stringify(logs));
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  addWorkoutLog(log: WorkoutSessionLog): WorkoutSessionLog[] {
+    try {
+      const logs = this.getWorkoutLogs();
+      const updated = [log, ...logs];
+      this.saveWorkoutLogs(updated);
+      return updated;
+    } catch (e) {
+      console.error(e);
+      return [];
     }
   },
 

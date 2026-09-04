@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { UserProfile, WeightLog, MealLog, ChatMessage, NoteItem } from "./types";
+import { UserProfile, WeightLog, MealLog, ChatMessage, NoteItem, AuthUser } from "./types";
 import { StorageService, DEFAULT_PROFILE } from "./utils/storage";
 import { calculateMetrics } from "./utils/calculations";
 import { Navbar } from "./components/Navbar";
 import { HomeTab } from "./components/HomeTab";
-import { GymTab } from "./components/GymTab";
+import { GymTab, GymSectionType } from "./components/GymTab";
 import { NotesTab } from "./components/NotesTab";
 import { ProfileTab } from "./components/ProfileTab";
 import { BottomNav } from "./components/BottomNav";
@@ -12,9 +12,11 @@ import { MealAnalysisModal } from "./components/MealAnalysisModal";
 import { ExportModal } from "./components/ExportModal";
 import { SupabaseModal } from "./components/SupabaseModal";
 import { GulinhaChat } from "./components/GulinhaChat";
+import { LoginScreen } from "./components/LoginScreen";
 import { SupabaseService } from "./lib/supabase";
 
 export default function App() {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => StorageService.getAuthUser());
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => StorageService.getWeightLogs());
   const [mealLogs, setMealLogs] = useState<MealLog[]>(() => StorageService.getMealLogs());
@@ -26,10 +28,38 @@ export default function App() {
 
   // Navigation and Modals
   const [activeTab, setActiveTab] = useState<string>("home");
+  const [tabHistory, setTabHistory] = useState<string[]>(["home"]);
+  const [gymSection, setGymSection] = useState<GymSectionType>("overview");
+
   const [isMealAnalysisOpen, setIsMealAnalysisOpen] = useState<boolean>(false);
+  const [mealAnalysisDate, setMealAnalysisDate] = useState<string>(todayStr);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState<boolean>(false);
   const [isFloatingChatOpen, setIsFloatingChatOpen] = useState<boolean>(false);
+
+  const handleNavigateTab = (newTab: string) => {
+    if (newTab !== activeTab) {
+      setTabHistory((prev) => [...prev, newTab]);
+      setActiveTab(newTab);
+    }
+  };
+
+  const handleGoBack = () => {
+    if (activeTab === "gym" && gymSection !== "overview") {
+      setGymSection("overview");
+      return;
+    }
+    if (tabHistory.length > 1) {
+      const nextHistory = [...tabHistory];
+      nextHistory.pop();
+      const prevTab = nextHistory[nextHistory.length - 1];
+      setTabHistory(nextHistory);
+      setActiveTab(prevTab || "home");
+    } else if (activeTab !== "home") {
+      setActiveTab("home");
+    }
+  };
+
 
   // Initial cloud sync from Supabase
   useEffect(() => {
@@ -282,12 +312,33 @@ export default function App() {
     ]);
   };
 
+  const handleLogin = (user: AuthUser, initialName?: string) => {
+    setAuthUser(user);
+    StorageService.saveAuthUser(user);
+
+    if (initialName) {
+      const updated: UserProfile = {
+        ...profile,
+        name: initialName,
+        email: user.email,
+        updatedAt: new Date().toISOString(),
+      };
+      setProfile(updated);
+      StorageService.saveProfile(updated);
+      SupabaseService.syncProfile(updated).catch(console.warn);
+    }
+  };
+
   const handleLogout = () => {
+    setAuthUser(null);
+    StorageService.clearAuthUser();
     setActiveTab("home");
   };
 
   const handleDeleteAccount = () => {
     StorageService.clearAll();
+    StorageService.clearAuthUser();
+    setAuthUser(null);
     setProfile(DEFAULT_PROFILE);
     setWeightLogs([]);
     setMealLogs([]);
@@ -304,6 +355,10 @@ export default function App() {
     setActiveTab("home");
   };
 
+  if (!authUser) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-black text-zinc-100 flex flex-col grid-bg-pattern relative selection:bg-blue-600 selection:text-white w-full overflow-x-hidden">
       {/* Ambient background glow */}
@@ -312,8 +367,10 @@ export default function App() {
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenProfile={() => setActiveTab("profile")}
+        setActiveTab={handleNavigateTab}
+        canGoBack={activeTab !== "home" || (activeTab === "gym" && gymSection !== "overview")}
+        onGoBack={handleGoBack}
+        onOpenProfile={() => handleNavigateTab("profile")}
         onOpenChat={() => setIsFloatingChatOpen((prev) => !prev)}
         onOpenExport={() => setIsExportModalOpen(true)}
         onOpenSupabase={() => setIsSupabaseModalOpen(true)}
@@ -327,7 +384,7 @@ export default function App() {
           <HomeTab
             profile={profile}
             notes={notes}
-            onNavigateTab={setActiveTab}
+            onNavigateTab={handleNavigateTab}
           />
         ) : activeTab === "gym" ? (
           <GymTab
@@ -337,6 +394,8 @@ export default function App() {
             mealLogs={mealLogs}
             chatMessages={chatMessages}
             waterIntake={waterIntake}
+            activeGymSection={gymSection}
+            onChangeGymSection={setGymSection}
             onAddWater={handleAddWater}
             onAddWeightLog={handleAddWeightLog}
             onDeleteWeightLog={handleDeleteWeightLog}
@@ -344,8 +403,11 @@ export default function App() {
             onDeleteMealLog={handleDeleteMealLog}
             onSendMessage={handleSendMessage}
             onClearChat={handleClearChat}
-            onOpenProfile={() => setActiveTab("profile")}
-            onOpenMealAnalysis={() => setIsMealAnalysisOpen(true)}
+            onOpenProfile={() => handleNavigateTab("profile")}
+            onOpenMealAnalysis={(dateStr) => {
+              setMealAnalysisDate(dateStr || todayStr);
+              setIsMealAnalysisOpen(true);
+            }}
             onUpdateProfile={handleUpdateProfile}
           />
         ) : activeTab === "notes" ? (
@@ -369,6 +431,7 @@ export default function App() {
         )}
       </main>
 
+
       {/* Floating Gulinha Chat Window */}
       {isFloatingChatOpen && (
         <GulinhaChat
@@ -390,6 +453,7 @@ export default function App() {
         onClose={() => setIsMealAnalysisOpen(false)}
         onSaveMeal={handleAddMealLog}
         profile={profile}
+        initialDate={mealAnalysisDate}
       />
 
       {/* Vercel & Icon Export Modal */}
@@ -422,7 +486,7 @@ export default function App() {
       {/* Fixed Bottom Task Navigation Bar */}
       <BottomNav
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavigateTab}
         notesCount={notes.length}
       />
     </div>

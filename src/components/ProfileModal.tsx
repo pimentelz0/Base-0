@@ -11,6 +11,7 @@ import {
   KeyRound,
   AlertTriangle,
   Upload,
+  Loader2,
 } from "lucide-react";
 import {
   UserProfile,
@@ -60,6 +61,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Delete Confirmation State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [logoutFeedback, setLogoutFeedback] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,13 +76,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   const liveMetrics = calculateMetrics(formData);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 400));
     onSave({
       ...formData,
       isConfigured: true,
       updatedAt: new Date().toISOString(),
     });
+    setIsSaving(false);
     onClose();
   };
 
@@ -563,10 +568,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="submit"
                 id="save-profile-btn"
-                className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-70 disabled:cursor-not-allowed text-black text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
               >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>Salvar Perfil</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" />
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>Salvar Perfil</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -703,6 +718,34 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-zinc-400 mb-1">
+                  Ombros (cm)
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={formData.measurements?.shoulders || ""}
+                  onChange={(e) => updateMeasurement("shoulders", e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
+                  placeholder="Em branco"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
+                  Pescoço (cm)
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={formData.measurements?.neck || ""}
+                  onChange={(e) => updateMeasurement("neck", e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
+                  placeholder="Em branco"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
                   Gordura Corporal (% BF)
                 </label>
                 <input
@@ -729,10 +772,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-70 disabled:cursor-not-allowed text-black text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
               >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>Salvar Medidas</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" />
+                    <span>Salvando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>Salvar Medidas</span>
+                  </>
+                )}
               </button>
             </div>
           </form>

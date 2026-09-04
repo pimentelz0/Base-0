@@ -10,6 +10,7 @@ import {
   Sparkles,
   AlertTriangle,
   X,
+  Loader2,
 } from "lucide-react";
 import { NoteItem, NoteColor } from "../types";
 
@@ -149,6 +150,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
     { id: string; text: string; done: boolean }[]
   >([]);
   const [newChecklistText, setNewChecklistText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const openNewNoteModal = (color: NoteColor = "pink") => {
     setEditingNote(null);
@@ -176,10 +178,13 @@ export const NotesTab: React.FC<NotesTabProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleSaveModal = (e: React.FormEvent) => {
+  const handleSaveModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim() && !formContent.trim() && checklistItems.length === 0)
       return;
+
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 400));
 
     if (editingNote) {
       onUpdateNote({
@@ -200,6 +205,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
         checklist: checklistItems.length > 0 ? checklistItems : undefined,
       });
     }
+    setIsSaving(false);
     setIsModalOpen(false);
   };
 
@@ -659,9 +665,17 @@ export const NotesTab: React.FC<NotesTabProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black transition-all shadow-md"
+                    disabled={isSaving}
+                    className="px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-70 disabled:cursor-not-allowed text-black text-xs font-black transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                   >
-                    {editingNote ? "Salvar Alterações" : "Criar Ideia"}
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin stroke-[2.5]" />
+                        <span>Salvando...</span>
+                      </>
+                    ) : (
+                      <span>{editingNote ? "Salvar Alterações" : "Criar Ideia"}</span>
+                    )}
                   </button>
                 </div>
               </div>

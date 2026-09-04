@@ -215,11 +215,11 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           </div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               <strong className="text-white font-mono">
-                {selectedDayData.tasksDone}
+                {selectedDayData.score}%
               </strong>{" "}
-              tarefas
+              consistência
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-[#007AFF]" />
@@ -234,18 +234,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* Motivação do Dia */}
       <div className="rounded-[22px] bg-zinc-950 border border-amber-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <Flame className="w-4 h-4" />
-            </div>
-            <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
-              Motivação do Dia
-            </h2>
-          </div>
-          <span className="px-2.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold uppercase tracking-wider">
-            {dailyInsight.motivation.focusWord}
-          </span>
+        <div className="mb-3">
+          <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
+            Motivação do Dia
+          </h2>
         </div>
 
         <h3 className="text-base sm:text-lg font-bold text-amber-200 font-['Outfit'] mb-2">
@@ -258,18 +250,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* Frase de Filósofo */}
       <div className="rounded-[22px] bg-zinc-950 border border-purple-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
-              <Quote className="w-4 h-4" />
-            </div>
-            <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
-              Frase de Filósofo
-            </h2>
-          </div>
-          <span className="px-2.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 text-[10px] font-mono font-bold">
-            {dailyInsight.quote.eraOrSchool}
-          </span>
+        <div className="mb-4">
+          <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
+            Frase de Filósofo
+          </h2>
         </div>
 
         <blockquote className="text-sm sm:text-base font-medium text-white italic leading-relaxed border-l-2 border-purple-500 pl-4 py-1">
@@ -290,18 +274,10 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
       {/* Dicas de Produtividade */}
       <div className="rounded-[22px] bg-zinc-950 border border-emerald-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Zap className="w-4 h-4" />
-            </div>
-            <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
-              Dica de Produtividade
-            </h2>
-          </div>
-          <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold uppercase tracking-wider">
-            {dailyInsight.productivityTip.category}
-          </span>
+        <div className="mb-3">
+          <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
+            Dica de Produtividade
+          </h2>
         </div>
 
         <h3 className="text-base sm:text-lg font-bold text-emerald-200 font-['Outfit'] mb-1.5">

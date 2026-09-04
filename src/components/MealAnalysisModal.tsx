@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { X, Camera, Upload, Sparkles, Utensils, Check, AlertCircle, Plus, Trash2, Loader2, MessageSquare } from "lucide-react";
 import { MealLog, MealCategory, MealItem, UserProfile } from "../types";
 
@@ -7,6 +7,7 @@ interface MealAnalysisModalProps {
   onClose: () => void;
   onSaveMeal: (meal: Omit<MealLog, "id">) => void;
   profile: UserProfile;
+  initialDate?: string;
 }
 
 export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
@@ -14,12 +15,21 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
   onClose,
   onSaveMeal,
   profile,
+  initialDate,
 }) => {
   const [activeMode, setActiveMode] = useState<"photo" | "text" | "manual">("photo");
+  const [mealDate, setMealDate] = useState<string>(() => initialDate || new Date().toISOString().split("T")[0]);
+
+  useEffect(() => {
+    if (initialDate && isOpen) {
+      setMealDate(initialDate);
+    }
+  }, [initialDate, isOpen]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
   const [descriptionText, setDescriptionText] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Analysis result state (editable before confirming)
@@ -116,14 +126,17 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
     }
   };
 
-  const handleConfirmSave = () => {
+  const handleConfirmSave = async () => {
     if (!analyzedMeal) return;
+
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 400));
 
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
     onSaveMeal({
-      date: now.toISOString().split("T")[0],
+      date: mealDate || now.toISOString().split("T")[0],
       time: timeStr,
       title: analyzedMeal.mealName,
       category: analyzedMeal.mealType,
@@ -136,6 +149,7 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
       gulinhaFeedback: analyzedMeal.gulinhaFeedback,
     });
 
+    setIsSaving(false);
     handleReset();
     onClose();
   };
@@ -354,10 +368,10 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
           ) : (
             /* Review & Confirm Results Screen */
             <div className="space-y-5 animate-in fade-in duration-200">
-              {/* Header Title & Category */}
+              {/* Header Title, Category & Date */}
               <div className="p-5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-1">
                     <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-1.5">
                       Título da Refeição
                     </label>
@@ -367,7 +381,7 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                       onChange={(e) =>
                         setAnalyzedMeal({ ...analyzedMeal, mealName: e.target.value })
                       }
-                      className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
                     />
                   </div>
 
@@ -383,7 +397,7 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                           mealType: e.target.value as MealCategory,
                         })
                       }
-                      className="w-full px-4 py-3 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
                     >
                       <option value="breakfast">Café da Manhã</option>
                       <option value="lunch">Almoço</option>
@@ -392,6 +406,18 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                       <option value="pre_workout">Pré-Treino</option>
                       <option value="post_workout">Pós-Treino</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-1.5">
+                      Data da Refeição
+                    </label>
+                    <input
+                      type="date"
+                      value={mealDate}
+                      onChange={(e) => setMealDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
+                    />
                   </div>
                 </div>
 
@@ -503,11 +529,21 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                   <button
                     type="button"
                     id="save-analyzed-meal-btn"
+                    disabled={isSaving}
                     onClick={handleConfirmSave}
-                    className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black uppercase tracking-wider shadow-lg shadow-[#007AFF]/25 flex items-center gap-2"
+                    className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-70 disabled:cursor-not-allowed text-black text-xs font-black uppercase tracking-wider shadow-lg shadow-[#007AFF]/25 flex items-center gap-2 cursor-pointer active:scale-95"
                   >
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    <span>Salvar no Diário</span>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" />
+                        <span>Salvando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 stroke-[3]" />
+                        <span>Salvar no Diário</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

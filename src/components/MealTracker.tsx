@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import { Utensils, Plus, Camera, Sparkles, Clock, Trash2, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import { MealLog, MealCategory, CalculatedMetrics, UserProfile } from "../types";
+import { DateSelector } from "./DateSelector";
 
 interface MealTrackerProps {
   meals: MealLog[];
   metrics: CalculatedMetrics;
   profile: UserProfile;
+  selectedDate: string;
+  onChangeDate: (dateStr: string) => void;
   onOpenAnalysisModal: () => void;
   onDeleteMeal: (id: string) => void;
 }
@@ -23,42 +26,66 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
   meals,
   metrics,
   profile,
+  selectedDate,
+  onChangeDate,
   onOpenAnalysisModal,
   onDeleteMeal,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [expandedMealId, setExpandedMealId] = useState<string | null>(null);
 
-  // Group meals
+  // Group meals for the selected date
   const todayStr = new Date().toISOString().split("T")[0];
-  const todayMeals = meals.filter((m) => m.date === todayStr);
+  const isCurrentDay = selectedDate === todayStr;
+  const selectedDateMeals = meals.filter((m) => m.date === selectedDate);
 
   const filteredMeals = selectedCategory === "all"
-    ? todayMeals
-    : todayMeals.filter((m) => m.category === selectedCategory);
+    ? selectedDateMeals
+    : selectedDateMeals.filter((m) => m.category === selectedCategory);
 
-  const todayCalories = todayMeals.reduce((a, b) => a + b.totalCalories, 0);
-  const todayProtein = todayMeals.reduce((a, b) => a + b.totalProtein, 0);
-  const todayCarbs = todayMeals.reduce((a, b) => a + b.totalCarbs, 0);
-  const todayFat = todayMeals.reduce((a, b) => a + b.totalFat, 0);
+  const totalCalories = selectedDateMeals.reduce((a, b) => a + b.totalCalories, 0);
+  const totalProtein = selectedDateMeals.reduce((a, b) => a + b.totalProtein, 0);
+  const totalCarbs = selectedDateMeals.reduce((a, b) => a + b.totalCarbs, 0);
+  const totalFat = selectedDateMeals.reduce((a, b) => a + b.totalFat, 0);
+
+  // Formatted date string for display
+  const [year, month, day] = selectedDate.split("-");
+  const formattedDate = `${day}/${month}/${year}`;
 
   return (
     <div className="space-y-6">
-      {/* Header with Quick Action */}
+      {/* Date Selector */}
+      <DateSelector
+        selectedDate={selectedDate}
+        onChangeDate={onChangeDate}
+      />
+
+      {/* Header with Quick Action & Day Macro Summary */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-900 pb-5">
         <div>
-          <h2 className="text-2xl font-black text-white font-['Outfit',sans-serif]">
-            Refeições
-          </h2>
-          <p className="text-xs text-zinc-400 mt-1">
-            Registro diário com cálculo de calorias e macronutrientes.
-          </p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-black text-white font-['Outfit',sans-serif]">
+              Refeições
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
+              {selectedDateMeals.length} {selectedDateMeals.length === 1 ? "refeição" : "refeições"}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-zinc-400 font-mono">
+            <span>Total da data: <strong className="text-white">{totalCalories} kcal</strong></span>
+            <span>•</span>
+            <span className="text-[#007AFF]">P: {totalProtein}g</span>
+            <span>•</span>
+            <span className="text-amber-400">C: {totalCarbs}g</span>
+            <span>•</span>
+            <span className="text-emerald-400">G: {totalFat}g</span>
+          </div>
         </div>
 
         <button
           id="open-meal-scanner-btn"
           onClick={onOpenAnalysisModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all self-start sm:self-auto shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all self-start sm:self-auto shadow-sm cursor-pointer"
         >
           <Camera className="w-4 h-4" />
           <span>Registrar Refeição</span>
@@ -69,21 +96,21 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
         <button
           onClick={() => setSelectedCategory("all")}
-          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
             selectedCategory === "all"
               ? "bg-[#007AFF] text-black shadow-sm"
               : "bg-zinc-950 text-zinc-400 border border-zinc-800/80 hover:text-white"
           }`}
         >
-          Todas ({todayMeals.length})
+          Todas ({selectedDateMeals.length})
         </button>
         {Object.entries(CATEGORY_NAMES).map(([key, label]) => {
-          const count = todayMeals.filter((m) => m.category === key).length;
+          const count = selectedDateMeals.filter((m) => m.category === key).length;
           return (
             <button
               key={key}
               onClick={() => setSelectedCategory(key)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
                 selectedCategory === key
                   ? "bg-[#007AFF] text-black shadow-sm"
                   : "bg-zinc-950 text-zinc-400 border border-zinc-800/80 hover:text-white"
@@ -234,17 +261,17 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
             <Utensils className="w-7 h-7" />
           </div>
           <div className="text-base font-black text-white">
-            Nenhuma refeição registrada hoje
+            Nenhuma refeição registrada {isCurrentDay ? "hoje" : `em ${formattedDate}`}
           </div>
           <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-            Tire uma foto do seu prato ou digite os alimentos consumidos para o Gulinha calcular calorias e macronutrientes.
+            Tire uma foto do seu prato ou digite os alimentos consumidos para calcular calorias e macronutrientes desta data.
           </p>
           <button
             onClick={onOpenAnalysisModal}
-            className="px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black uppercase tracking-wider inline-flex items-center gap-2 shadow-md shadow-[#007AFF]/25"
+            className="px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black uppercase tracking-wider inline-flex items-center gap-2 shadow-md shadow-[#007AFF]/25 cursor-pointer"
           >
             <Camera className="w-4 h-4 stroke-[2.5]" />
-            <span>Registrar Primeira Refeição</span>
+            <span>Registrar Refeição {isCurrentDay ? "" : `(${formattedDate})`}</span>
           </button>
         </div>
       )}
