@@ -16,11 +16,16 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Lazy initialization of GoogleGenAI
-function getGenAI() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured");
+function getApiKey(): string {
+  const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY (ou VITE_GEMINI_API_KEY) não está configurada nas variáveis de ambiente.");
   }
+  return key;
+}
+
+function getGenAI() {
+  const apiKey = getApiKey();
   return new GoogleGenAI({
     apiKey,
     httpOptions: {
@@ -29,6 +34,24 @@ function getGenAI() {
       },
     },
   });
+}
+
+async function generateWithModelFallback(ai: GoogleGenAI, params: any) {
+  const candidateModels = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-flash-latest"];
+  let lastErr: any;
+  for (const model of candidateModels) {
+    try {
+      const response = await ai.models.generateContent({
+        ...params,
+        model,
+      });
+      return response;
+    } catch (err: any) {
+      lastErr = err;
+      console.warn(`Tentativa com modelo ${model} falhou: ${err?.message || err}. Tentando próximo modelo...`);
+    }
+  }
+  throw lastErr;
 }
 
 // Health check
@@ -78,8 +101,6 @@ Contexto atual do Usuário:
 
     // Map conversation history
     const contents: any[] = [];
-    
-    // Add history
     for (const msg of messages) {
       contents.push({
         role: msg.role === "user" ? "user" : "model",
@@ -87,8 +108,7 @@ Contexto atual do Usuário:
       });
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
+    const response = await generateWithModelFallback(ai, {
       contents,
       config: {
         systemInstruction: contextPrompt,
@@ -141,71 +161,72 @@ Forneça um nome atraente para a refeição, a lista discriminada de itens e uma
 
     parts.push({ text: promptText });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
-      contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            mealName: {
-              type: Type.STRING,
-              description: "Nome descritivo e claro da refeição (ex: Almoço: Frango Grelhado com Arroz e Salada)",
-            },
-            mealType: {
-              type: Type.STRING,
-              description: "Tipo sugerido da refeição: 'Café da Manhã', 'Almoço', 'Lanche', 'Jantar', 'Pré-Treino' ou 'Pós-Treino'",
-            },
-            totalCalories: {
-              type: Type.NUMBER,
-              description: "Total de calorias estimadas (kcal)",
-            },
-            totalProtein: {
-              type: Type.NUMBER,
-              description: "Total de proteínas em gramas (g)",
-            },
-            totalCarbs: {
-              type: Type.NUMBER,
-              description: "Total de carboidratos em gramas (g)",
-            },
-            totalFat: {
-              type: Type.NUMBER,
-              description: "Total de gorduras em gramas (g)",
-            },
-            items: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING, description: "Nome do alimento" },
-                  portion: { type: Type.STRING, description: "Porção estimada (ex: 150g, 2 unidades, 1 colher)" },
-                  calories: { type: Type.NUMBER, description: "Calorias do item" },
-                  protein: { type: Type.NUMBER, description: "Proteínas do item em gramas" },
-                  carbs: { type: Type.NUMBER, description: "Carboidratos do item em gramas" },
-                  fat: { type: Type.NUMBER, description: "Gorduras do item em gramas" },
-                },
-                required: ["name", "portion", "calories", "protein", "carbs", "fat"],
-              },
-              description: "Lista discriminada dos alimentos",
-            },
-            gulinhaFeedback: {
-              type: Type.STRING,
-              description: "Comentário e dica motivacional/técnica do Gulinha em português sobre a refeição",
-            },
+    const mealSchemaConfig = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          mealName: {
+            type: Type.STRING,
+            description: "Nome descritivo e claro da refeição (ex: Almoço: Frango Grelhado com Arroz e Salada)",
           },
-          required: [
-            "mealName",
-            "mealType",
-            "totalCalories",
-            "totalProtein",
-            "totalCarbs",
-            "totalFat",
-            "items",
-            "gulinhaFeedback",
-          ],
+          mealType: {
+            type: Type.STRING,
+            description: "Tipo sugerido da refeição: 'Café da Manhã', 'Almoço', 'Lanche', 'Jantar', 'Pré-Treino' ou 'Pós-Treino'",
+          },
+          totalCalories: {
+            type: Type.NUMBER,
+            description: "Total de calorias estimadas (kcal)",
+          },
+          totalProtein: {
+            type: Type.NUMBER,
+            description: "Total de proteínas em gramas (g)",
+          },
+          totalCarbs: {
+            type: Type.NUMBER,
+            description: "Total de carboidratos em gramas (g)",
+          },
+          totalFat: {
+            type: Type.NUMBER,
+            description: "Total de gorduras em gramas (g)",
+          },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING, description: "Nome do alimento" },
+                portion: { type: Type.STRING, description: "Porção estimada (ex: 150g, 2 unidades, 1 colher)" },
+                calories: { type: Type.NUMBER, description: "Calorias do item" },
+                protein: { type: Type.NUMBER, description: "Proteínas do item em gramas" },
+                carbs: { type: Type.NUMBER, description: "Carboidratos do item em gramas" },
+                fat: { type: Type.NUMBER, description: "Gorduras do item em gramas" },
+              },
+              required: ["name", "portion", "calories", "protein", "carbs", "fat"],
+            },
+            description: "Lista discriminada dos alimentos",
+          },
+          gulinhaFeedback: {
+            type: Type.STRING,
+            description: "Comentário e dica motivacional/técnica do Gulinha em português sobre a refeição",
+          },
         },
+        required: [
+          "mealName",
+          "mealType",
+          "totalCalories",
+          "totalProtein",
+          "totalCarbs",
+          "totalFat",
+          "items",
+          "gulinhaFeedback",
+        ],
       },
+    };
+
+    const response = await generateWithModelFallback(ai, {
+      contents: [{ role: "user", parts }],
+      config: mealSchemaConfig,
     });
 
     const parsed = JSON.parse(response.text?.trim() || "{}");

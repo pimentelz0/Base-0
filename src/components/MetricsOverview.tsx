@@ -101,23 +101,34 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
 
         <div className="flex flex-wrap items-baseline gap-4 sm:gap-6 mt-1">
           <h2 className="text-7xl sm:text-8xl md:text-9xl font-black leading-none tracking-tighter text-white font-['Outfit',sans-serif]">
-            {profile.currentWeight}
-            <span className="text-2xl sm:text-3xl text-zinc-600 font-bold ml-1">kg</span>
+            {profile.currentWeight > 0 ? profile.currentWeight : "0.0"}
+            <span className="text-2xl sm:text-3xl text-zinc-500 font-bold ml-1">kg</span>
           </h2>
 
-          <div className="flex flex-col justify-center">
-            <span className={`text-sm sm:text-base font-black font-mono flex items-center gap-1 ${
-              isLoss ? "text-emerald-400" : totalWeightChange > 0 ? "text-[#007AFF]" : "text-zinc-400"
-            }`}>
-              {isLoss ? <TrendingDown className="w-4 h-4" /> : totalWeightChange > 0 ? <TrendingUp className="w-4 h-4" /> : null}
-              {totalWeightChange > 0 ? `+${totalWeightChange}` : totalWeightChange} kg
-            </span>
-            <span className="text-zinc-500 text-xs font-semibold">
-              desde o início
-            </span>
-          </div>
+          {profile.currentWeight > 0 ? (
+            <div className="flex flex-col justify-center">
+              <span className={`text-sm sm:text-base font-black font-mono flex items-center gap-1 ${
+                isLoss ? "text-emerald-400" : totalWeightChange > 0 ? "text-[#007AFF]" : "text-zinc-400"
+              }`}>
+                {isLoss ? <TrendingDown className="w-4 h-4" /> : totalWeightChange > 0 ? <TrendingUp className="w-4 h-4" /> : null}
+                {totalWeightChange > 0 ? `+${totalWeightChange}` : totalWeightChange} kg
+              </span>
+              <span className="text-zinc-500 text-xs font-semibold">
+                desde o início
+              </span>
+            </div>
+          ) : (
+            <div className="flex flex-col justify-center">
+              <span className="text-sm font-semibold text-zinc-400">
+                Nenhum peso registrado
+              </span>
+              <span className="text-zinc-500 text-xs font-mono">
+                Clique em "Nova Pesagem" para registrar
+              </span>
+            </div>
+          )}
 
-          {profile.targetWeight && (
+          {profile.targetWeight && profile.currentWeight > 0 && (
             <div className="ml-auto hidden sm:flex flex-col items-end justify-center">
               <span className="text-xs text-zinc-500 font-bold uppercase tracking-wider">
                 Meta
@@ -131,78 +142,106 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
       </div>
 
       {/* Comparativo de Evolução (Peso Inicial -> Peso Atual -> Meta) */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Scale className="w-4 h-4 text-[#007AFF]" />
-            <h3 className="text-sm font-black text-white font-['Outfit'] uppercase tracking-wider">
-              Comparativo de Evolução (Pesagem)
-            </h3>
+      {profile.currentWeight > 0 ? (
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-950 border border-zinc-800/90 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Scale className="w-4 h-4 text-[#007AFF]" />
+              <h3 className="text-sm font-black text-white font-['Outfit'] uppercase tracking-wider">
+                Comparativo de Evolução (Pesagem)
+              </h3>
+            </div>
+            {onOpenWeight && (
+              <button
+                onClick={onOpenWeight}
+                className="text-xs text-[#007AFF] hover:underline font-mono font-bold flex items-center gap-1"
+              >
+                <span>Histórico de Pesagens</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          {onOpenWeight && (
-            <button
-              onClick={onOpenWeight}
-              className="text-xs text-[#007AFF] hover:underline font-mono font-bold flex items-center gap-1"
-            >
-              <span>Histórico de Pesagens</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-4 rounded-xl bg-zinc-900/70 border border-zinc-800/80">
+              <span className="text-[10px] text-zinc-400 uppercase font-mono font-bold block mb-1">
+                Peso Inicial
+              </span>
+              <div className="text-2xl font-black text-white font-mono">
+                {effectiveStartWeight} <span className="text-xs text-zinc-500 font-normal">kg</span>
+              </div>
+              <span className="text-[11px] text-zinc-500 font-mono">Ponto de partida</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-zinc-900/70 border border-[#007AFF]/40">
+              <span className="text-[10px] text-[#007AFF] uppercase font-mono font-bold block mb-1">
+                Peso Atual
+              </span>
+              <div className="text-2xl font-black text-white font-mono">
+                {profile.currentWeight} <span className="text-xs text-zinc-500 font-normal">kg</span>
+              </div>
+              <div className={`text-[11px] font-mono font-bold ${
+                isLoss ? "text-emerald-400" : "text-[#007AFF]"
+              }`}>
+                {totalWeightChange > 0 ? `+${totalWeightChange}` : totalWeightChange} kg desde início
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-zinc-900/70 border border-zinc-800/80">
+              <span className="text-[10px] text-zinc-400 uppercase font-mono font-bold block mb-1">
+                Meta de Peso
+              </span>
+              <div className="text-2xl font-black text-[#007AFF] font-mono">
+                {targetWeight ? `${targetWeight}` : "--"} <span className="text-xs text-zinc-500 font-normal">kg</span>
+              </div>
+              <span className="text-[11px] text-zinc-500 font-mono">
+                {targetWeight ? `Faltam ${targetDelta} kg` : "Defina no perfil"}
+              </span>
+            </div>
+          </div>
+
+          {targetWeight && (
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-zinc-400">Progresso rumo à meta ({targetWeight} kg)</span>
+                <span className="text-[#007AFF] font-bold">{progressPercentage}%</span>
+              </div>
+              <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-[#007AFF] rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+            </div>
           )}
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-4 rounded-xl bg-zinc-900/70 border border-zinc-800/80">
-            <span className="text-[10px] text-zinc-400 uppercase font-mono font-bold block mb-1">
-              Peso Inicial
-            </span>
-            <div className="text-2xl font-black text-white font-mono">
-              {effectiveStartWeight} <span className="text-xs text-zinc-500 font-normal">kg</span>
-            </div>
-            <span className="text-[11px] text-zinc-500 font-mono">Ponto de partida</span>
+      ) : (
+        <div className="p-6 rounded-2xl bg-zinc-950 border border-zinc-800/90 text-center space-y-3">
+          <div className="w-10 h-10 rounded-full bg-[#007AFF]/10 border border-[#007AFF]/20 text-[#007AFF] flex items-center justify-center mx-auto">
+            <Scale className="w-5 h-5" />
           </div>
-
-          <div className="p-4 rounded-xl bg-zinc-900/70 border border-[#007AFF]/40">
-            <span className="text-[10px] text-[#007AFF] uppercase font-mono font-bold block mb-1">
-              Peso Atual
-            </span>
-            <div className="text-2xl font-black text-white font-mono">
-              {profile.currentWeight} <span className="text-xs text-zinc-500 font-normal">kg</span>
-            </div>
-            <div className={`text-[11px] font-mono font-bold ${
-              isLoss ? "text-emerald-400" : "text-[#007AFF]"
-            }`}>
-              {totalWeightChange > 0 ? `+${totalWeightChange}` : totalWeightChange} kg desde início
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-zinc-900/70 border border-zinc-800/80">
-            <span className="text-[10px] text-zinc-400 uppercase font-mono font-bold block mb-1">
-              Meta de Peso
-            </span>
-            <div className="text-2xl font-black text-[#007AFF] font-mono">
-              {targetWeight ? `${targetWeight}` : "—"} <span className="text-xs text-zinc-500 font-normal">kg</span>
-            </div>
-            <span className="text-[11px] text-zinc-500 font-mono">
-              {targetWeight ? `Faltam ${targetDelta} kg` : "Defina no perfil"}
-            </span>
+          <h3 className="text-sm font-bold text-white font-['Outfit']">Nenhum dado corporal registrado ainda</h3>
+          <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+            Defina seu peso e metas em <strong>Perfil & Metas</strong> ou registre sua primeira pesagem para ativar o acompanhamento.
+          </p>
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <button
+              onClick={onOpenProfile}
+              className="px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all shadow-sm cursor-pointer"
+            >
+              Configurar Perfil
+            </button>
+            {onOpenWeight && (
+              <button
+                onClick={onOpenWeight}
+                className="px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-bold transition-all cursor-pointer"
+              >
+                Registrar Pesagem
+              </button>
+            )}
           </div>
         </div>
-
-        {targetWeight && (
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-zinc-400">Progresso rumo à meta ({targetWeight} kg)</span>
-              <span className="text-[#007AFF] font-bold">{progressPercentage}%</span>
-            </div>
-            <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full bg-[#007AFF] rounded-full transition-all duration-500"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Core Metrics: Single flat clean cards with no nested boxes */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -213,7 +252,14 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
             <Flame className="w-4 h-4 text-orange-400" />
           </div>
           <p className="text-3xl font-black text-white font-mono tracking-tight">
-            {metrics.tmb.toLocaleString("pt-BR")} <span className="text-sm text-zinc-500 font-bold">kcal</span>
+            {profile.currentWeight > 0 ? (
+              <>
+                {metrics.tmb.toLocaleString("pt-BR")}{" "}
+                <span className="text-sm text-zinc-500 font-bold">kcal</span>
+              </>
+            ) : (
+              <span className="text-zinc-500 text-2xl font-mono">0 kcal</span>
+            )}
           </p>
         </div>
 
@@ -224,12 +270,18 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
             <Scale className="w-4 h-4 text-[#007AFF]" />
           </div>
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-black text-white font-mono tracking-tight">
-              {metrics.imc}
-            </p>
-            <span className={`text-xs font-bold ${metrics.imcColor}`}>
-              {metrics.imcCategory}
-            </span>
+            {profile.currentWeight > 0 ? (
+              <>
+                <p className="text-3xl font-black text-white font-mono tracking-tight">
+                  {metrics.imc}
+                </p>
+                <span className={`text-xs font-bold ${metrics.imcColor}`}>
+                  {metrics.imcCategory}
+                </span>
+              </>
+            ) : (
+              <p className="text-3xl font-black text-zinc-500 font-mono tracking-tight">0.0</p>
+            )}
           </div>
         </div>
 
@@ -240,7 +292,14 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
             <Activity className="w-4 h-4 text-emerald-400" />
           </div>
           <p className="text-3xl font-black text-white font-mono tracking-tight">
-            {metrics.get.toLocaleString("pt-BR")} <span className="text-sm text-zinc-500 font-bold">kcal</span>
+            {profile.currentWeight > 0 ? (
+              <>
+                {metrics.get.toLocaleString("pt-BR")}{" "}
+                <span className="text-sm text-zinc-500 font-bold">kcal</span>
+              </>
+            ) : (
+              <span className="text-zinc-500 text-2xl font-mono">0 kcal</span>
+            )}
           </p>
         </div>
 
@@ -252,7 +311,14 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
           </div>
           <div>
             <p className="text-3xl font-black text-[#007AFF] font-mono tracking-tight">
-              {metrics.targetCalories.toLocaleString("pt-BR")} <span className="text-sm text-zinc-500 font-bold">kcal</span>
+              {profile.currentWeight > 0 ? (
+                <>
+                  {metrics.targetCalories.toLocaleString("pt-BR")}{" "}
+                  <span className="text-sm text-zinc-500 font-bold">kcal</span>
+                </>
+              ) : (
+                <span className="text-zinc-500 text-2xl font-mono">0 kcal</span>
+              )}
             </p>
             <div className="flex justify-between text-xs mt-2 text-zinc-400 font-mono">
               <span>{isCurrentDay ? "Hoje" : "Consumido"}: {todayCalories} kcal</span>
@@ -276,9 +342,6 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
             <h3 className="text-lg font-black text-white font-['Outfit',sans-serif]">
               Macronutrientes
             </h3>
-            <span className="text-xs font-mono text-zinc-400">
-              {todayMeals.length} {todayMeals.length === 1 ? "refeição nesta data" : "refeições nesta data"}
-            </span>
           </div>
 
           <div className="space-y-4">
@@ -290,14 +353,18 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
                   Proteínas
                 </span>
                 <span className="font-mono text-zinc-300">
-                  <strong className="text-white text-sm font-black">{todayProtein}g</strong> / {metrics.targetProtein}g
-                  <span className="text-zinc-500 ml-1">({proteinPercentage}%)</span>
+                  <strong className="text-white text-sm font-black">{todayProtein}g</strong>
+                  {profile.currentWeight > 0 ? (
+                    <> / {metrics.targetProtein}g <span className="text-zinc-500 ml-1">({proteinPercentage}%)</span></>
+                  ) : (
+                    <span className="text-zinc-500 ml-1">/ 0g</span>
+                  )}
                 </span>
               </div>
               <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
                 <div
                   className="h-full bg-[#007AFF] rounded-full transition-all duration-500"
-                  style={{ width: `${proteinPercentage}%` }}
+                  style={{ width: `${profile.currentWeight > 0 ? proteinPercentage : 0}%` }}
                 />
               </div>
             </div>
@@ -310,14 +377,18 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
                   Carboidratos
                 </span>
                 <span className="font-mono text-zinc-300">
-                  <strong className="text-white text-sm font-black">{todayCarbs}g</strong> / {metrics.targetCarbs}g
-                  <span className="text-zinc-500 ml-1">({carbsPercentage}%)</span>
+                  <strong className="text-white text-sm font-black">{todayCarbs}g</strong>
+                  {profile.currentWeight > 0 ? (
+                    <> / {metrics.targetCarbs}g <span className="text-zinc-500 ml-1">({carbsPercentage}%)</span></>
+                  ) : (
+                    <span className="text-zinc-500 ml-1">/ 0g</span>
+                  )}
                 </span>
               </div>
               <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
                 <div
                   className="h-full bg-amber-400 rounded-full transition-all duration-500"
-                  style={{ width: `${carbsPercentage}%` }}
+                  style={{ width: `${profile.currentWeight > 0 ? carbsPercentage : 0}%` }}
                 />
               </div>
             </div>
@@ -330,14 +401,18 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
                   Gorduras
                 </span>
                 <span className="font-mono text-zinc-300">
-                  <strong className="text-white text-sm font-black">{todayFat}g</strong> / {metrics.targetFat}g
-                  <span className="text-zinc-500 ml-1">({fatPercentage}%)</span>
+                  <strong className="text-white text-sm font-black">{todayFat}g</strong>
+                  {profile.currentWeight > 0 ? (
+                    <> / {metrics.targetFat}g <span className="text-zinc-500 ml-1">({fatPercentage}%)</span></>
+                  ) : (
+                    <span className="text-zinc-500 ml-1">/ 0g</span>
+                  )}
                 </span>
               </div>
               <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
                 <div
                   className="h-full bg-emerald-400 rounded-full transition-all duration-500"
-                  style={{ width: `${fatPercentage}%` }}
+                  style={{ width: `${profile.currentWeight > 0 ? fatPercentage : 0}%` }}
                 />
               </div>
             </div>
@@ -351,18 +426,21 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
               Hidratação
             </h3>
             <span className="text-xs font-mono font-bold text-sky-400">
-              {waterPercentage}%
+              {profile.currentWeight > 0 ? `${waterPercentage}%` : "0%"}
             </span>
           </div>
 
           <div className="text-center py-2">
             <div className="text-4xl font-black text-white font-mono tracking-tight">
-              {waterIntake} <span className="text-base font-bold text-zinc-500">/ {metrics.targetWater} ml</span>
+              {waterIntake}{" "}
+              <span className="text-base font-bold text-zinc-500">
+                / {profile.currentWeight > 0 ? `${metrics.targetWater} ml` : "0 ml"}
+              </span>
             </div>
             <div className="w-full bg-zinc-900 rounded-full h-2 mt-3 overflow-hidden">
               <div
                 className="h-full bg-sky-400 rounded-full transition-all duration-500"
-                style={{ width: `${waterPercentage}%` }}
+                style={{ width: `${profile.currentWeight > 0 ? waterPercentage : 0}%` }}
               />
             </div>
           </div>

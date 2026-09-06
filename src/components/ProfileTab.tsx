@@ -12,12 +12,14 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { UserProfile } from "../types";
+import { compressImage } from "../utils/imageCompressor";
 
 interface ProfileTabProps {
   profile: UserProfile;
   onSave: (updated: UserProfile) => void;
   onLogout?: () => void;
   onDeleteAccount?: () => void;
+  onEditProfile?: () => void;
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({
@@ -25,6 +27,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
   onSave,
   onLogout,
   onDeleteAccount,
+  onEditProfile,
 }) => {
   const [activeSection, setActiveSection] = useState<"security" | "account">("security");
 
@@ -43,20 +46,26 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const compressedDataUrl = await compressImage(file, {
+        maxWidth: 320,
+        maxHeight: 320,
+        quality: 0.82,
+        mimeType: "image/jpeg",
+      });
       const updated = {
         ...profile,
-        avatarUrl: dataUrl,
+        avatarUrl: compressedDataUrl,
+        updatedAt: new Date().toISOString(),
       };
       onSave(updated);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn("Avatar upload error:", err);
+    }
   };
 
   const handleRemovePhoto = () => {
@@ -162,8 +171,19 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           </div>
         </div>
 
-        {/* Gallery Upload Actions */}
-        <div className="flex items-center gap-2">
+        {/* Profile Actions */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {onEditProfile && (
+            <button
+              type="button"
+              onClick={onEditProfile}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black transition-all shadow-md shadow-[#007AFF]/20 cursor-pointer"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Editar Perfil</span>
+            </button>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -174,17 +194,17 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white text-xs font-bold transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white text-xs font-bold transition-colors cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5 text-[#007AFF]" />
-            <span>Foto da Galeria</span>
+            <span>Foto</span>
           </button>
 
           {profile.avatarUrl && (
             <button
               type="button"
               onClick={handleRemovePhoto}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-red-900/50 text-zinc-400 hover:text-red-400 text-xs font-bold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-red-900/50 text-zinc-400 hover:text-red-400 text-xs font-bold transition-colors cursor-pointer"
               title="Remover foto"
             >
               <Trash2 className="w-3.5 h-3.5" />

@@ -104,8 +104,14 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
   const isToday = effectiveDate === todayStr;
 
   // Generate SVG Path for the interactive chart
-  const minWeight = Math.min(...sortedLogsAsc.map((l) => l.weight), targetWeight || currentWeight) - 1.5;
-  const maxWeight = Math.max(...sortedLogsAsc.map((l) => l.weight), startWeight) + 1.5;
+  const validWeights = sortedLogsAsc.map((l) => l.weight);
+  const fallbackWeight = currentWeight > 0 ? currentWeight : 70;
+  const minWeight = validWeights.length > 0
+    ? Math.min(...validWeights, targetWeight || fallbackWeight) - 1.5
+    : fallbackWeight - 2;
+  const maxWeight = validWeights.length > 0
+    ? Math.max(...validWeights, startWeight || fallbackWeight) + 1.5
+    : fallbackWeight + 2;
   const range = maxWeight - minWeight || 1;
 
   const chartHeight = 160;
@@ -507,66 +513,72 @@ export const WeightTracker: React.FC<WeightTrackerProps> = ({
       <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800/90 overflow-hidden">
         <div className="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between">
           <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
-            Histórico Cronológico ({sortedLogsDesc.length})
+            Histórico Cronológico
           </h3>
           <span className="text-[11px] text-zinc-400">Ordenado por data recente</span>
         </div>
 
         <div className="divide-y divide-zinc-800/60 max-h-72 overflow-y-auto">
-          {sortedLogsDesc.map((log, idx) => {
-            const prevLog = sortedLogsDesc[idx + 1];
-            const deltaPrev = prevLog ? Math.round((log.weight - prevLog.weight) * 10) / 10 : 0;
+          {sortedLogsDesc.length === 0 ? (
+            <div className="p-8 text-center text-zinc-500 text-xs font-mono">
+              Nenhuma pesagem registrada ainda. Registre sua primeira pesagem acima.
+            </div>
+          ) : (
+            sortedLogsDesc.map((log, idx) => {
+              const prevLog = sortedLogsDesc[idx + 1];
+              const deltaPrev = prevLog ? Math.round((log.weight - prevLog.weight) * 10) / 10 : 0;
 
-            return (
-              <div
-                key={log.id}
-                className="px-5 py-3 flex items-center justify-between hover:bg-zinc-850/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400">
-                    <Calendar className="w-4 h-4 text-blue-400" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-white font-mono">
-                      {log.weight} kg
+              return (
+                <div
+                  key={log.id}
+                  className="px-5 py-3 flex items-center justify-between hover:bg-zinc-850/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400">
+                      <Calendar className="w-4 h-4 text-blue-400" />
                     </div>
-                    <div className="text-xs text-zinc-400 flex items-center gap-2">
-                      <span>{formatDateBR(log.date)}</span>
-                      {log.note && (
-                        <>
-                          <span className="text-zinc-600">•</span>
-                          <span className="text-zinc-300 italic truncate max-w-xs">{log.note}</span>
-                        </>
-                      )}
+                    <div>
+                      <div className="text-sm font-bold text-white font-mono">
+                        {log.weight} kg
+                      </div>
+                      <div className="text-xs text-zinc-400 flex items-center gap-2">
+                        <span>{formatDateBR(log.date)}</span>
+                        {log.note && (
+                          <>
+                            <span className="text-zinc-600">•</span>
+                            <span className="text-zinc-300 italic truncate max-w-xs">{log.note}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  {prevLog && (
-                    <span
-                      className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
-                        deltaPrev < 0
-                          ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/50"
-                          : deltaPrev > 0
-                          ? "bg-blue-950/60 text-blue-400 border border-blue-800/50"
-                          : "bg-zinc-800 text-zinc-400"
-                      }`}
+                  <div className="flex items-center gap-3">
+                    {prevLog && (
+                      <span
+                        className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
+                          deltaPrev < 0
+                            ? "bg-emerald-950/60 text-emerald-400 border border-emerald-800/50"
+                            : deltaPrev > 0
+                            ? "bg-blue-950/60 text-blue-400 border border-blue-800/50"
+                            : "bg-zinc-800 text-zinc-400"
+                        }`}
+                      >
+                        {deltaPrev > 0 ? `+${deltaPrev}` : deltaPrev} kg
+                      </span>
+                    )}
+                    <button
+                      onClick={() => onDeleteLog(log.id)}
+                      className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors"
+                      title="Excluir pesagem"
                     >
-                      {deltaPrev > 0 ? `+${deltaPrev}` : deltaPrev} kg
-                    </span>
-                  )}
-                  <button
-                    onClick={() => onDeleteLog(log.id)}
-                    className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-colors"
-                    title="Excluir pesagem"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </div>

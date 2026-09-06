@@ -7,6 +7,7 @@ import { HomeTab } from "./components/HomeTab";
 import { GymTab, GymSectionType } from "./components/GymTab";
 import { NotesTab } from "./components/NotesTab";
 import { ProfileTab } from "./components/ProfileTab";
+import { ProfileModal } from "./components/ProfileModal";
 import { BottomNav } from "./components/BottomNav";
 import { MealAnalysisModal } from "./components/MealAnalysisModal";
 import { ExportModal } from "./components/ExportModal";
@@ -14,6 +15,7 @@ import { SupabaseModal } from "./components/SupabaseModal";
 import { GulinhaChat } from "./components/GulinhaChat";
 import { LoginScreen } from "./components/LoginScreen";
 import { SupabaseService } from "./lib/supabase";
+import { GulinhaService } from "./services/gulinhaService";
 
 export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => StorageService.getAuthUser());
@@ -33,9 +35,11 @@ export default function App() {
 
   const [isMealAnalysisOpen, setIsMealAnalysisOpen] = useState<boolean>(false);
   const [mealAnalysisDate, setMealAnalysisDate] = useState<string>(todayStr);
+  const [mealAnalysisMode, setMealAnalysisMode] = useState<"manual" | "photo" | "text">("manual");
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState<boolean>(false);
   const [isFloatingChatOpen, setIsFloatingChatOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
 
   const handleNavigateTab = (newTab: string) => {
     if (newTab !== activeTab) {
@@ -61,25 +65,82 @@ export default function App() {
   };
 
 
-  // Initial cloud sync from Supabase
+  // Initial cloud sync from Supabase with timestamp-based conflict resolution
   useEffect(() => {
     async function loadCloudData() {
       try {
         const remote = await SupabaseService.fetchAllData();
+        
+        // 1. Profile: timestamp conflict resolution (never let old cloud data overwrite newer local edits)
         if (remote.profile) {
-          setProfile(remote.profile);
+          const localProfile = StorageService.getProfile();
+          const remoteTime = new Date(remote.profile.updatedAt || 0).getTime();
+          const localTime = new Date(localProfile.updatedAt || 0).getTime();
+
+          // Only accept remote if remote is strictly newer than local
+          if (remoteTime > localTime) {
+            const mergedProfile: UserProfile = {
+              ...localProfile,
+              ...remote.profile,
+              measurements: {
+                ...(localProfile.measurements || {}),
+                ...(remote.profile.measurements || {}),
+              },
+              avatarUrl: remote.profile.avatarUrl || localProfile.avatarUrl,
+            };
+            setProfile(mergedProfile);
+            StorageService.saveProfile(mergedProfile);
+          } else if (localTime > remoteTime) {
+            // Local has newer edits! Push local to Supabase so cloud catches up
+            SupabaseService.syncProfile(localProfile).catch(console.warn);
+          }
         }
+
+        // 2. Weight logs: Merge union by ID without deleting any local or remote entry
         if (remote.weightLogs && remote.weightLogs.length > 0) {
-          setWeightLogs(remote.weightLogs);
+          const localLogs = StorageService.getWeightLogs();
+          const map = new Map<string, WeightLog>();
+          remote.weightLogs.forEach((w) => map.set(w.id, w));
+          localLogs.forEach((w) => map.set(w.id, w));
+          const mergedLogs = Array.from(map.values()).sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          setWeightLogs(mergedLogs);
+          StorageService.saveWeightLogs(mergedLogs);
         }
+
+        // 3. Meal logs: Merge union by ID
         if (remote.mealLogs && remote.mealLogs.length > 0) {
-          setMealLogs(remote.mealLogs);
+          const localMeals = StorageService.getMealLogs();
+          const map = new Map<string, MealLog>();
+          remote.mealLogs.forEach((m) => map.set(m.id, m));
+          localMeals.forEach((m) => map.set(m.id, m));
+          const mergedMeals = Array.from(map.values()).sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          setMealLogs(mergedMeals);
+          StorageService.saveMealLogs(mergedMeals);
         }
+
+        // 4. Chat messages: Merge union by ID and sort chronologically
         if (remote.chatMessages && remote.chatMessages.length > 0) {
-          setChatMessages(remote.chatMessages);
+          const localChat = StorageService.getChatMessages();
+          const map = new Map<string, ChatMessage>();
+          remote.chatMessages.forEach((c) => map.set(c.id, c));
+          localChat.forEach((c) => map.set(c.id, c));
+          const mergedChat = Array.from(map.values()).sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          setChatMessages(mergedChat);
+          StorageService.saveChatMessages(mergedChat);
         }
+
+        // 5. Water intake: Merge today's intake taking maximum
         if (remote.waterIntake && remote.waterIntake[todayStr] !== undefined) {
-          setWaterIntake(remote.waterIntake[todayStr]);
+          const localWater = StorageService.getWaterIntake(todayStr);
+          const maxWater = Math.max(localWater, remote.waterIntake[todayStr]);
+          setWaterIntake(maxWater);
+          StorageService.saveWaterIntake(todayStr, maxWater);
         }
       } catch (err) {
         console.warn("Supabase background init load error:", err);
@@ -120,8 +181,13 @@ export default function App() {
 
   // Update profile
   const handleUpdateProfile = (updated: UserProfile) => {
-    setProfile(updated);
-    SupabaseService.syncProfile(updated).catch(console.warn);
+    const toSave: UserProfile = {
+      ...updated,
+      updatedAt: new Date().toISOString(),
+    };
+    setProfile(toSave);
+    StorageService.saveProfile(toSave);
+    SupabaseService.syncProfile(toSave).catch(console.warn);
   };
 
   // Add new weight log
@@ -132,6 +198,7 @@ export default function App() {
     };
     const updatedLogs = [createdLog, ...weightLogs];
     setWeightLogs(updatedLogs);
+    StorageService.saveWeightLogs(updatedLogs);
 
     // Update profile current weight
     const updatedProfile: UserProfile = {
@@ -140,6 +207,7 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setProfile(updatedProfile);
+    StorageService.saveProfile(updatedProfile);
 
     // Background sync to Supabase
     SupabaseService.syncWeightLog(createdLog).catch(console.warn);
@@ -163,12 +231,16 @@ export default function App() {
       } \n\nSuas metas diárias de calorias (${calculatedMetrics.targetCalories} kcal) e TMB foram atualizadas.`,
       timestamp: new Date().toISOString(),
     };
-    setChatMessages((prev) => [...prev, autoBotMsg]);
+    const nextChat = [...chatMessages, autoBotMsg];
+    setChatMessages(nextChat);
+    StorageService.saveChatMessages(nextChat);
     SupabaseService.syncChatMessage(autoBotMsg).catch(console.warn);
   };
 
   const handleDeleteWeightLog = (id: string) => {
-    setWeightLogs((prev) => prev.filter((l) => l.id !== id));
+    const next = weightLogs.filter((l) => l.id !== id);
+    setWeightLogs(next);
+    StorageService.saveWeightLogs(next);
     SupabaseService.deleteWeightLog(id).catch(console.warn);
   };
 
@@ -178,7 +250,9 @@ export default function App() {
       ...newMeal,
       id: `m-${Date.now()}`,
     };
-    setMealLogs((prev) => [createdMeal, ...prev]);
+    const nextMeals = [createdMeal, ...mealLogs];
+    setMealLogs(nextMeals);
+    StorageService.saveMealLogs(nextMeals);
     SupabaseService.syncMealLog(createdMeal).catch(console.warn);
 
     // Send notification in chat
@@ -188,12 +262,16 @@ export default function App() {
       content: `🥗 **Refeição adicionada com sucesso:** *${newMeal.title}* (${newMeal.totalCalories} kcal | ${newMeal.totalProtein}g Proteína).\n\n${newMeal.gulinhaFeedback || "Excelente escolha para seus objetivos físicos!"}`,
       timestamp: new Date().toISOString(),
     };
-    setChatMessages((prev) => [...prev, mealBotMsg]);
+    const nextChat = [...chatMessages, mealBotMsg];
+    setChatMessages(nextChat);
+    StorageService.saveChatMessages(nextChat);
     SupabaseService.syncChatMessage(mealBotMsg).catch(console.warn);
   };
 
   const handleDeleteMealLog = (id: string) => {
-    setMealLogs((prev) => prev.filter((m) => m.id !== id));
+    const next = mealLogs.filter((m) => m.id !== id);
+    setMealLogs(next);
+    StorageService.saveMealLogs(next);
     SupabaseService.deleteMealLog(id).catch(console.warn);
   };
 
@@ -201,6 +279,7 @@ export default function App() {
   const handleAddWater = (amount: number) => {
     setWaterIntake((prev) => {
       const next = prev + amount;
+      StorageService.saveWaterIntake(todayStr, next);
       SupabaseService.syncWaterIntake(todayStr, next).catch(console.warn);
       return next;
     });
@@ -213,17 +292,23 @@ export default function App() {
       id: `note-${Date.now()}`,
       updatedAt: new Date().toISOString(),
     };
-    setNotes((prev) => [created, ...prev]);
+    const next = [created, ...notes];
+    setNotes(next);
+    StorageService.saveNotes(next);
   };
 
   const handleUpdateNote = (updated: NoteItem) => {
-    setNotes((prev) =>
-      prev.map((n) => (n.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : n))
+    const next = notes.map((n) =>
+      n.id === updated.id ? { ...updated, updatedAt: new Date().toISOString() } : n
     );
+    setNotes(next);
+    StorageService.saveNotes(next);
   };
 
   const handleDeleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+    const next = notes.filter((n) => n.id !== id);
+    setNotes(next);
+    StorageService.saveNotes(next);
   };
 
   // Gulinha Chat Message Dispatcher
@@ -267,34 +352,32 @@ export default function App() {
     };
 
     try {
-      const res = await fetch("/api/gulinha/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-          userContext,
-        }),
-      });
+      const reply = await GulinhaService.chat(
+        newMessages.map((m) => ({ role: m.role, content: m.content })),
+        userContext
+      );
 
-      if (!res.ok) {
-        throw new Error("Erro ao conectar com Gulinha.");
-      }
-
-      const data = await res.json();
       const botMsg: ChatMessage = {
         id: `bot-${Date.now()}`,
         role: "model",
-        content: data.reply || "Excelente pergunta! Como posso te ajudar mais?",
+        content: reply || "Excelente pergunta! Como posso te ajudar mais?",
         timestamp: new Date().toISOString(),
       };
       setChatMessages((prev) => [...prev, botMsg]);
       SupabaseService.syncChatMessage(botMsg).catch(console.warn);
     } catch (err: any) {
-      console.error(err);
+      console.error("Erro no Gulinha Chat:", err);
       const fallbackMsg: ChatMessage = {
         id: `bot-err-${Date.now()}`,
         role: "model",
-        content: "Ops! Tive uma oscilação na conexão com o servidor. Mas mantenha o foco: sua TMB atual é " + calculatedMetrics.tmb + " kcal e meta de " + calculatedMetrics.targetCalories + " kcal!",
+        content:
+          err?.message?.includes("VITE_GEMINI_API_KEY") || err?.message?.includes("GEMINI_API_KEY")
+            ? `⚠️ ${err.message}`
+            : "Ops! Tive uma oscilação na conexão com o servidor. Mas mantenha o foco: sua TMB atual é " +
+              calculatedMetrics.tmb +
+              " kcal e meta de " +
+              calculatedMetrics.targetCalories +
+              " kcal!",
         timestamp: new Date().toISOString(),
       };
       setChatMessages((prev) => [...prev, fallbackMsg]);
@@ -370,7 +453,7 @@ export default function App() {
         setActiveTab={handleNavigateTab}
         canGoBack={activeTab !== "home" || (activeTab === "gym" && gymSection !== "overview")}
         onGoBack={handleGoBack}
-        onOpenProfile={() => handleNavigateTab("profile")}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenChat={() => setIsFloatingChatOpen((prev) => !prev)}
         onOpenExport={() => setIsExportModalOpen(true)}
         onOpenSupabase={() => setIsSupabaseModalOpen(true)}
@@ -384,6 +467,9 @@ export default function App() {
           <HomeTab
             profile={profile}
             notes={notes}
+            weightLogs={weightLogs}
+            mealLogs={mealLogs}
+            waterIntake={waterIntake}
             onNavigateTab={handleNavigateTab}
           />
         ) : activeTab === "gym" ? (
@@ -403,9 +489,10 @@ export default function App() {
             onDeleteMealLog={handleDeleteMealLog}
             onSendMessage={handleSendMessage}
             onClearChat={handleClearChat}
-            onOpenProfile={() => handleNavigateTab("profile")}
-            onOpenMealAnalysis={(dateStr) => {
+            onOpenProfile={() => setIsProfileModalOpen(true)}
+            onOpenMealAnalysis={(dateStr, mode) => {
               setMealAnalysisDate(dateStr || todayStr);
+              setMealAnalysisMode(mode || "manual");
               setIsMealAnalysisOpen(true);
             }}
             onUpdateProfile={handleUpdateProfile}
@@ -423,6 +510,7 @@ export default function App() {
             onSave={handleUpdateProfile}
             onLogout={handleLogout}
             onDeleteAccount={handleDeleteAccount}
+            onEditProfile={() => setIsProfileModalOpen(true)}
           />
         ) : (
           <div className="text-center py-20">
@@ -447,13 +535,14 @@ export default function App() {
         />
       )}
 
-      {/* Meal Analysis Modal (Photo / Text) */}
+      {/* Meal Analysis Modal (Manual / Photo / Text) */}
       <MealAnalysisModal
         isOpen={isMealAnalysisOpen}
         onClose={() => setIsMealAnalysisOpen(false)}
         onSaveMeal={handleAddMealLog}
         profile={profile}
         initialDate={mealAnalysisDate}
+        initialMode={mealAnalysisMode}
       />
 
       {/* Vercel & Icon Export Modal */}
@@ -481,6 +570,16 @@ export default function App() {
           if (data.chatMessages) setChatMessages(data.chatMessages);
           if (data.waterIntake !== undefined) setWaterIntake(data.waterIntake);
         }}
+      />
+
+      {/* Profile Edit Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        profile={profile}
+        onSave={handleUpdateProfile}
+        onLogout={handleLogout}
+        onDeleteAccount={handleDeleteAccount}
       />
 
       {/* Fixed Bottom Task Navigation Bar */}

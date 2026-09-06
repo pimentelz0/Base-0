@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Check, Flame, Target, Activity, Droplets, Sparkles, User, Scale, ArrowLeft, Loader2 } from "lucide-react";
 import { UserProfile, ActivityLevel, FitnessGoal, CalculatedMetrics } from "../types";
 import { ACTIVITY_LABELS, GOAL_LABELS, calculateMetrics } from "../utils/calculations";
@@ -19,39 +19,82 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
   const [formData, setFormData] = useState<UserProfile>(profile);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     setFormData(profile);
   }, [profile]);
 
+  // Keep latest form data in ref for unmount auto-save
+  const latestRef = useRef({ formData, profile, isDirty });
+  useEffect(() => {
+    latestRef.current = { formData, profile, isDirty };
+  }, [formData, profile, isDirty]);
+
+  const cleanProfile = (data: UserProfile): UserProfile => ({
+    ...data,
+    name: data.name.trim() || profile.name || "",
+    height: Number(data.height) || 0,
+    age: Number(data.age) || 0,
+    startWeight: Number(data.startWeight) || Number(data.currentWeight) || 0,
+    currentWeight: Number(data.currentWeight) || 0,
+    targetWeight: data.targetWeight ? Number(data.targetWeight) : undefined,
+    isConfigured: Boolean(data.name.trim() || Number(data.currentWeight) > 0),
+    updatedAt: new Date().toISOString(),
+  });
+
+  // Auto-save on unmount if user modified form fields
+  useEffect(() => {
+    return () => {
+      if (latestRef.current.isDirty) {
+        const cleaned = cleanProfile(latestRef.current.formData);
+        onUpdateProfile(cleaned);
+        StorageService.saveProfile(cleaned);
+      }
+    };
+  }, []);
+
   // Preview real-time calculated metrics as user adjusts values
   const previewMetrics = calculateMetrics(formData);
 
+  const handleFieldChange = <K extends keyof UserProfile>(key: K, value: UserProfile[K]) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+    setIsDirty(true);
+  };
+
+  const updateField = (changes: Partial<UserProfile>) => {
+    setFormData((prev) => ({ ...prev, ...changes }));
+    setIsDirty(true);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
-    const cleanedProfile: UserProfile = {
-      ...formData,
-      name: formData.name.trim() || profile.name || "Atleta Base 0",
-      height: Number(formData.height) || 175,
-      age: Number(formData.age) || 25,
-      startWeight: Number(formData.startWeight) || Number(formData.currentWeight) || 75,
-      currentWeight: Number(formData.currentWeight) || 75,
-      targetWeight: formData.targetWeight ? Number(formData.targetWeight) : undefined,
-      isConfigured: true,
-      updatedAt: new Date().toISOString(),
-    };
+    const cleanedProfile = cleanProfile(formData);
 
     // Small delay to ensure clear visual loading feedback
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 400));
 
     onUpdateProfile(cleanedProfile);
     StorageService.saveProfile(cleanedProfile);
 
     setIsSaving(false);
+    setIsDirty(false);
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
     }, 4000);
+  };
+
+  const handleBack = () => {
+    if (isDirty) {
+      const cleaned = cleanProfile(formData);
+      onUpdateProfile(cleaned);
+      StorageService.saveProfile(cleaned);
+      setIsDirty(false);
+    }
+    if (onNavigateSection) {
+      onNavigateSection("overview");
+    }
   };
 
   return (
@@ -71,7 +114,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
           <div className="flex items-center gap-2 self-start sm:self-auto">
             <button
               type="button"
-              onClick={() => onNavigateSection("overview")}
+              onClick={handleBack}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition-all border border-zinc-800 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -159,7 +202,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
               type="text"
               value={formData.name}
               onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
+                updateField({ name: e.target.value })
               }
               className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none transition-colors"
               placeholder="Ex: Carlos"
@@ -173,7 +216,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, gender: "male" })}
+                onClick={() => updateField({ gender: "male" })}
                 className={`py-2 rounded-xl text-xs font-bold border transition-all ${
                   formData.gender === "male"
                     ? "bg-[#007AFF]/20 border-[#007AFF] text-[#007AFF]"
@@ -184,7 +227,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, gender: "female" })}
+                onClick={() => updateField({ gender: "female" })}
                 className={`py-2 rounded-xl text-xs font-bold border transition-all ${
                   formData.gender === "female"
                     ? "bg-[#007AFF]/20 border-[#007AFF] text-[#007AFF]"
@@ -209,8 +252,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
               max="250"
               value={formData.height || ""}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
+                updateField({
                   height: parseFloat(e.target.value) || 0,
                 })
               }
@@ -229,8 +271,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
               max="100"
               value={formData.age || ""}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
+                updateField({
                   age: parseInt(e.target.value) || 0,
                 })
               }
@@ -267,8 +308,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                 value={formData.startWeight || ""}
                 onChange={(e) => {
                   const w = parseFloat(e.target.value) || 0;
-                  setFormData({
-                    ...formData,
+                  updateField({
                     startWeight: w,
                   });
                 }}
@@ -289,8 +329,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                 value={formData.currentWeight || ""}
                 onChange={(e) => {
                   const w = parseFloat(e.target.value) || 0;
-                  setFormData({
-                    ...formData,
+                  updateField({
                     currentWeight: w,
                   });
                 }}
@@ -310,8 +349,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                 max="300"
                 value={formData.targetWeight || ""}
                 onChange={(e) =>
-                  setFormData({
-                    ...formData,
+                  updateField({
                     targetWeight: e.target.value
                       ? parseFloat(e.target.value)
                       : undefined,
@@ -332,8 +370,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
             <select
               value={formData.activityLevel}
               onChange={(e) =>
-                setFormData({
-                  ...formData,
+                updateField({
                   activityLevel: e.target.value as ActivityLevel,
                 })
               }
@@ -359,8 +396,7 @@ export const GymProfileSettings: React.FC<GymProfileSettingsProps> = ({
                 <div
                   key={key}
                   onClick={() =>
-                    setFormData({
-                      ...formData,
+                    updateField({
                       goal: key as FitnessGoal,
                     })
                   }

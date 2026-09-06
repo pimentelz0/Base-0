@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Check, Save, Sparkles, User, Ruler, Activity, Percent, Info } from "lucide-react";
 import { UserProfile, UserMeasurements, Gender } from "../types";
 import { Body2DSilhouette, BodyPartKey } from "./Body2DSilhouette";
@@ -19,6 +19,26 @@ export const MeasurementsTracker: React.FC<MeasurementsTrackerProps> = ({
   const [activePart, setActivePart] = useState<BodyPartKey | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Keep latest state in ref for unmount persistence
+  const latestDataRef = useRef({ profile, gender, measurements, isDirty });
+  useEffect(() => {
+    latestDataRef.current = { profile, gender, measurements, isDirty };
+  }, [profile, gender, measurements, isDirty]);
+
+  // Auto-save on unmount if user modified measurements and left the tab
+  useEffect(() => {
+    return () => {
+      if (latestDataRef.current.isDirty) {
+        onUpdateProfile({
+          ...latestDataRef.current.profile,
+          gender: latestDataRef.current.gender,
+          measurements: latestDataRef.current.measurements,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    };
+  }, [onUpdateProfile]);
 
   useEffect(() => {
     if (profile.measurements) {

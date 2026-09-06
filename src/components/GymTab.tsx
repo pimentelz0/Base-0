@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import {
-  LayoutDashboard,
+  Activity,
   Dumbbell,
   Scale,
   Utensils,
   Bot,
   Ruler,
   UserCheck,
-  ArrowLeft,
 } from "lucide-react";
 import {
   UserProfile,
@@ -16,6 +15,7 @@ import {
   MealLog,
   ChatMessage,
 } from "../types";
+import { StorageService } from "../utils/storage";
 import { MetricsOverview } from "./MetricsOverview";
 import { WorkoutTracker } from "./WorkoutTracker";
 import { WeightTracker } from "./WeightTracker";
@@ -50,7 +50,7 @@ interface GymTabProps {
   onSendMessage: (text: string) => Promise<void>;
   onClearChat: () => void;
   onOpenProfile: () => void;
-  onOpenMealAnalysis: (dateStr?: string) => void;
+  onOpenMealAnalysis: (dateStr?: string, mode?: "manual" | "photo" | "text") => void;
   onUpdateProfile: (updated: UserProfile) => void;
 }
 
@@ -92,36 +92,22 @@ export const GymTab: React.FC<GymTabProps> = ({
     id: GymSectionType;
     label: string;
     icon: React.FC<{ className?: string }>;
-    count?: number;
   }> = [
-    { id: "overview", label: "Visão Geral", icon: LayoutDashboard },
+    { id: "overview", label: "Visão Geral", icon: Activity },
     { id: "treino", label: "Treino", icon: Dumbbell },
     { id: "profile", label: "Perfil & Metas", icon: UserCheck },
-    { id: "weight", label: "Pesagem", icon: Scale, count: weightLogs.length > 0 ? weightLogs.length : undefined },
-    { id: "meals", label: "Refeições", icon: Utensils, count: selectedDateMeals.length > 0 ? selectedDateMeals.length : undefined },
+    { id: "weight", label: "Pesagem", icon: Scale },
+    { id: "meals", label: "Refeições", icon: Utensils },
     { id: "measurements", label: "Medidas", icon: Ruler },
     { id: "gulinha", label: "Gulinha IA", icon: Bot },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Subnav & Back Arrow */}
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-900/80 pb-2">
-        <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center gap-2">
-          {/* Back arrow inside GymTab when not on overview */}
-          {activeGymSection !== "overview" && (
-            <button
-              type="button"
-              onClick={() => setActiveGymSection("overview")}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 text-xs font-mono font-bold transition-all cursor-pointer shrink-0"
-              title="Voltar para Visão Geral"
-            >
-              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">Visão Geral</span>
-            </button>
-          )}
-
-          <nav className="inline-flex items-center gap-1 p-1 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 backdrop-blur-md">
+      {/* Subnav Centered */}
+      <div className="flex items-center justify-center w-full border-b border-zinc-900/80 pb-3">
+        <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center justify-center">
+          <nav className="inline-flex items-center mx-auto gap-1 p-1 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 backdrop-blur-md shadow-sm">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeGymSection === item.id;
@@ -140,17 +126,6 @@ export const GymTab: React.FC<GymTabProps> = ({
                 >
                   <Icon className={`w-3.5 h-3.5 ${isActive ? "stroke-[2.5]" : ""}`} />
                   <span>{item.label}</span>
-                  {item.count !== undefined && (
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold leading-none ${
-                        isActive
-                          ? "bg-black/20 text-black"
-                          : "bg-zinc-800/80 text-zinc-400"
-                      }`}
-                    >
-                      {item.count}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -205,7 +180,7 @@ export const GymTab: React.FC<GymTabProps> = ({
           profile={profile}
           selectedDate={selectedDate}
           onChangeDate={setSelectedDate}
-          onOpenAnalysisModal={() => onOpenMealAnalysis(selectedDate)}
+          onOpenAnalysisModal={(mode) => onOpenMealAnalysis(selectedDate, mode)}
           onDeleteMeal={onDeleteMealLog}
         />
       )}

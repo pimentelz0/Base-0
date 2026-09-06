@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, Camera, Upload, Sparkles, Utensils, Check, AlertCircle, Plus, Trash2, Loader2, MessageSquare } from "lucide-react";
 import { MealLog, MealCategory, MealItem, UserProfile } from "../types";
+import { compressImage } from "../utils/imageCompressor";
+import { GulinhaService } from "../services/gulinhaService";
 
 interface MealAnalysisModalProps {
   isOpen: boolean;
@@ -8,6 +10,7 @@ interface MealAnalysisModalProps {
   onSaveMeal: (meal: Omit<MealLog, "id">) => void;
   profile: UserProfile;
   initialDate?: string;
+  initialMode?: "manual" | "photo" | "text";
 }
 
 export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
@@ -16,15 +19,33 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
   onSaveMeal,
   profile,
   initialDate,
+  initialMode = "manual",
 }) => {
-  const [activeMode, setActiveMode] = useState<"photo" | "text" | "manual">("photo");
+  const [activeMode, setActiveMode] = useState<"photo" | "text" | "manual">(initialMode);
   const [mealDate, setMealDate] = useState<string>(() => initialDate || new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
-    if (initialDate && isOpen) {
-      setMealDate(initialDate);
+    if (isOpen) {
+      if (initialDate) setMealDate(initialDate);
+      if (initialMode) setActiveMode(initialMode);
     }
-  }, [initialDate, isOpen]);
+  }, [initialDate, initialMode, isOpen]);
+
+  // Manual mode state
+  const [manualTitle, setManualTitle] = useState<string>("Almoço");
+  const [manualCategory, setManualCategory] = useState<MealCategory>("lunch");
+  const [manualTime, setManualTime] = useState<string>(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  });
+  const [manualCalories, setManualCalories] = useState<string>("500");
+  const [manualProtein, setManualProtein] = useState<string>("35");
+  const [manualCarbs, setManualCarbs] = useState<string>("50");
+  const [manualFat, setManualFat] = useState<string>("15");
+  const [manualItems, setManualItems] = useState<Array<{ name: string; portion: string }>>([
+    { name: "", portion: "" },
+  ]);
+  const [manualNotes, setManualNotes] = useState<string>("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
   const [descriptionText, setDescriptionText] = useState<string>("");
@@ -48,16 +69,27 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setImageMimeType(file.type || "image/jpeg");
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    setImageMimeType("image/jpeg");
+    try {
+      const compressedDataUrl = await compressImage(file, {
+        maxWidth: 640,
+        maxHeight: 640,
+        quality: 0.72,
+        mimeType: "image/jpeg",
+      });
+      setImagePreview(compressedDataUrl);
+    } catch (err) {
+      console.warn("Meal photo compression failed, reading directly:", err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleAnalyze = async () => {
@@ -70,24 +102,13 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
     setAnalysisError(null);
 
     try {
-      const res = await fetch("/api/gulinha/analyze-meal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64: imagePreview || undefined,
-          mimeType: imageMimeType,
-          description: descriptionText.trim() || undefined,
-          userGoal: profile.goal,
-          targetCalories: profile.currentWeight ? Math.round(profile.currentWeight * 30) : 2000,
-        }),
+      const data = await GulinhaService.analyzeMeal({
+        imageBase64: imagePreview || undefined,
+        mimeType: imageMimeType,
+        description: descriptionText.trim() || undefined,
+        userGoal: profile.goal,
+        targetCalories: profile.currentWeight ? Math.round(profile.currentWeight * 30) : 2000,
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Falha na análise da refeição pelo Gulinha.");
-      }
-
-      const data = await res.json();
 
       // Normalize category
       let cat: MealCategory = "lunch";
@@ -154,6 +175,74 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
     onClose();
   };
 
+  const handleSaveManualMeal = async () => {
+    if (!manualTitle.trim()) {
+      setAnalysisError("Por favor, digite o nome da refeição.");
+      return;
+    }
+
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const validItems: MealItem[] = manualItems
+      .filter((it) => it.name.trim().length > 0)
+      .map((it, idx) => ({
+        id: `m-item-${Date.now()}-${idx}`,
+        name: it.name.trim(),
+        portion: it.portion.trim() || "1 porção",
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      }));
+
+    const finalCalories = Math.max(0, Number(manualCalories) || 0);
+    const finalProtein = Math.max(0, Number(manualProtein) || 0);
+    const finalCarbs = Math.max(0, Number(manualCarbs) || 0);
+    const finalFat = Math.max(0, Number(manualFat) || 0);
+
+    onSaveMeal({
+      date: mealDate || new Date().toISOString().split("T")[0],
+      time: manualTime || `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`,
+      title: manualTitle.trim(),
+      category: manualCategory,
+      items: validItems.length > 0 ? validItems : [
+        {
+          id: `item-${Date.now()}`,
+          name: manualTitle.trim(),
+          portion: "1 porção",
+          calories: finalCalories,
+          protein: finalProtein,
+          carbs: finalCarbs,
+          fat: finalFat,
+        }
+      ],
+      totalCalories: finalCalories,
+      totalProtein: finalProtein,
+      totalCarbs: finalCarbs,
+      totalFat: finalFat,
+      gulinhaFeedback: manualNotes.trim() || "Refeição registrada manualmente.",
+    });
+
+    setIsSaving(false);
+    handleReset();
+    onClose();
+  };
+
+  const handleAddManualItem = () => {
+    setManualItems([...manualItems, { name: "", portion: "" }]);
+  };
+
+  const handleRemoveManualItem = (index: number) => {
+    setManualItems(manualItems.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateManualItem = (index: number, field: "name" | "portion", value: string) => {
+    const updated = [...manualItems];
+    updated[index][field] = value;
+    setManualItems(updated);
+  };
+
   const handleReset = () => {
     setImagePreview(null);
     setDescriptionText("");
@@ -211,8 +300,11 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-white font-['Outfit',sans-serif]">
-                Registrar Refeição com Gulinha IA
+                Registrar Refeição
               </h2>
+              <p className="text-[11px] text-zinc-400">
+                Adicione manualmente ou utilize a IA do Gulinha
+              </p>
             </div>
           </div>
           <button
@@ -230,33 +322,251 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
         <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
           {!analyzedMeal ? (
             <>
-              {/* Input Mode Selector */}
-              <div className="grid grid-cols-2 gap-2 bg-zinc-900/80 p-1.5 rounded-xl border border-zinc-800">
+              {/* Input Mode Selector - 3 Modes */}
+              <div className="grid grid-cols-3 gap-2 bg-zinc-900/80 p-1.5 rounded-xl border border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setActiveMode("manual")}
+                  className={`py-2 px-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    activeMode === "manual"
+                      ? "bg-[#007AFF] text-black shadow-md shadow-[#007AFF]/25"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Manual</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setActiveMode("photo")}
-                  className={`py-2.5 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                  className={`py-2 px-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     activeMode === "photo"
                       ? "bg-[#007AFF] text-black shadow-md shadow-[#007AFF]/25"
                       : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  <Camera className="w-4 h-4 stroke-[2.5]" />
-                  <span>Foto do Prato</span>
+                  <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Foto (IA)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveMode("text")}
-                  className={`py-2.5 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                  className={`py-2 px-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     activeMode === "text"
                       ? "bg-[#007AFF] text-black shadow-md shadow-[#007AFF]/25"
                       : "text-zinc-400 hover:text-white"
                   }`}
                 >
-                  <MessageSquare className="w-4 h-4 stroke-[2.5]" />
-                  <span>Texto / Voz</span>
+                  <MessageSquare className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Texto (IA)</span>
                 </button>
               </div>
+
+              {/* Modo Manual - Registro Direto */}
+              {activeMode === "manual" && (
+                <div className="space-y-4">
+                  {/* Nome e Categoria */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-1.5">
+                        Nome da Refeição
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={manualTitle}
+                        onChange={(e) => setManualTitle(e.target.value)}
+                        placeholder="Ex: Almoço, Omelete Proteico, Shake..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-1.5">
+                        Momento do Dia
+                      </label>
+                      <select
+                        value={manualCategory}
+                        onChange={(e) => setManualCategory(e.target.value as MealCategory)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
+                      >
+                        <option value="breakfast">Café da Manhã</option>
+                        <option value="lunch">Almoço</option>
+                        <option value="snack">Lanche</option>
+                        <option value="dinner">Jantar</option>
+                        <option value="pre_workout">Pré-Treino</option>
+                        <option value="post_workout">Pós-Treino</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Data e Horário */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-1.5">
+                        Data
+                      </label>
+                      <input
+                        type="date"
+                        value={mealDate}
+                        onChange={(e) => setMealDate(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-1.5">
+                        Horário
+                      </label>
+                      <input
+                        type="time"
+                        value={manualTime}
+                        onChange={(e) => setManualTime(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs font-bold focus:outline-none focus:border-[#007AFF]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Macronutrientes Principais */}
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-2">
+                      Informações Nutricionais (Estimadas ou Totais)
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 rounded-xl bg-zinc-900 border border-[#007AFF]/40">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-[#007AFF] block">
+                          Calorias (kcal)
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={manualCalories}
+                          onChange={(e) => setManualCalories(e.target.value)}
+                          className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-[#007AFF]"
+                        />
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-900 border border-blue-500/30">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-blue-400 block">
+                          Proteínas (g)
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={manualProtein}
+                          onChange={(e) => setManualProtein(e.target.value)}
+                          className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-blue-500"
+                        />
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-900 border border-amber-500/30">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-amber-400 block">
+                          Carbos (g)
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={manualCarbs}
+                          onChange={(e) => setManualCarbs(e.target.value)}
+                          className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-amber-500"
+                        />
+                      </div>
+                      <div className="p-3 rounded-xl bg-zinc-900 border border-emerald-500/30">
+                        <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400 block">
+                          Gorduras (g)
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={manualFat}
+                          onChange={(e) => setManualFat(e.target.value)}
+                          className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lista de Alimentos Opcional */}
+                  <div className="space-y-2 pt-1 border-t border-zinc-900">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-zinc-300">
+                        Alimentos / Ingredientes (Opcional)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddManualItem}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#007AFF] hover:underline cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Adicionar Alimento</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {manualItems.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Alimento (ex: Frango grelhado)"
+                            value={item.name}
+                            onChange={(e) => handleUpdateManualItem(idx, "name", e.target.value)}
+                            className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs outline-none focus:border-[#007AFF]"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Porção (ex: 150g)"
+                            value={item.portion}
+                            onChange={(e) => handleUpdateManualItem(idx, "portion", e.target.value)}
+                            className="w-28 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs outline-none focus:border-[#007AFF]"
+                          />
+                          {manualItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveManualItem(idx)}
+                              className="p-2 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                              title="Remover item"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Observações */}
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1">
+                      Observações (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={manualNotes}
+                      onChange={(e) => setManualNotes(e.target.value)}
+                      placeholder="Ex: Bebeu 400ml de água junto, sem açúcar..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-xs focus:outline-none focus:border-[#007AFF]"
+                    />
+                  </div>
+
+                  {/* Botão Salvar Manual */}
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      disabled={isSaving || !manualTitle.trim()}
+                      onClick={handleSaveManualMeal}
+                      className="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-50 text-black text-xs font-black uppercase tracking-wider shadow-lg shadow-[#007AFF]/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-black" />
+                          <span>Salvando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span>Salvar Refeição Manual</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Photo Input Area */}
               {activeMode === "photo" && (

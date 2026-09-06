@@ -9,7 +9,7 @@ interface MealTrackerProps {
   profile: UserProfile;
   selectedDate: string;
   onChangeDate: (dateStr: string) => void;
-  onOpenAnalysisModal: () => void;
+  onOpenAnalysisModal: (mode?: "manual" | "photo" | "text") => void;
   onDeleteMeal: (id: string) => void;
 }
 
@@ -67,9 +67,6 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
             <h2 className="text-2xl font-black text-white font-['Outfit',sans-serif]">
               Refeições
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300">
-              {selectedDateMeals.length} {selectedDateMeals.length === 1 ? "refeição" : "refeições"}
-            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-zinc-400 font-mono">
             <span>Total da data: <strong className="text-white">{totalCalories} kcal</strong></span>
@@ -82,14 +79,25 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
           </div>
         </div>
 
-        <button
-          id="open-meal-scanner-btn"
-          onClick={onOpenAnalysisModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all self-start sm:self-auto shadow-sm cursor-pointer"
-        >
-          <Camera className="w-4 h-4" />
-          <span>Registrar Refeição</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            id="open-manual-meal-btn"
+            onClick={() => onOpenAnalysisModal("manual")}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Registrar Manual</span>
+          </button>
+          <button
+            id="open-meal-scanner-btn"
+            onClick={() => onOpenAnalysisModal("photo")}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
+            title="Escanear prato com foto ou IA"
+          >
+            <Camera className="w-4 h-4 text-[#007AFF]" />
+            <span>Foto / IA</span>
+          </button>
+        </div>
       </div>
 
       {/* Quick Meal Categories Filter */}
@@ -102,10 +110,9 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
               : "bg-zinc-950 text-zinc-400 border border-zinc-800/80 hover:text-white"
           }`}
         >
-          Todas ({selectedDateMeals.length})
+          Todas
         </button>
         {Object.entries(CATEGORY_NAMES).map(([key, label]) => {
-          const count = selectedDateMeals.filter((m) => m.category === key).length;
           return (
             <button
               key={key}
@@ -117,13 +124,6 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
               }`}
             >
               <span>{label}</span>
-              {count > 0 && (
-                <span className={`w-4 h-4 rounded-full text-[10px] font-mono flex items-center justify-center font-bold ${
-                  selectedCategory === key ? "bg-black/25 text-black" : "bg-zinc-800 text-[#007AFF]"
-                }`}>
-                  {count}
-                </span>
-              )}
             </button>
           );
         })}
@@ -266,13 +266,22 @@ export const MealTracker: React.FC<MealTrackerProps> = ({
           <p className="text-xs text-zinc-500 max-w-sm mx-auto">
             Tire uma foto do seu prato ou digite os alimentos consumidos para calcular calorias e macronutrientes desta data.
           </p>
-          <button
-            onClick={onOpenAnalysisModal}
-            className="px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black uppercase tracking-wider inline-flex items-center gap-2 shadow-md shadow-[#007AFF]/25 cursor-pointer"
-          >
-            <Camera className="w-4 h-4 stroke-[2.5]" />
-            <span>Registrar Refeição {isCurrentDay ? "" : `(${formattedDate})`}</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+            <button
+              onClick={() => onOpenAnalysisModal("manual")}
+              className="px-5 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-black uppercase tracking-wider inline-flex items-center gap-2 shadow-md shadow-[#007AFF]/25 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Registrar Manual</span>
+            </button>
+            <button
+              onClick={() => onOpenAnalysisModal("photo")}
+              className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer"
+            >
+              <Camera className="w-4 h-4 text-[#007AFF]" />
+              <span>Foto / IA</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

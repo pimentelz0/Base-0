@@ -7,7 +7,6 @@ import {
   LogOut,
   User,
   Check,
-  Info,
   KeyRound,
   AlertTriangle,
   Upload,
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 import {
   UserProfile,
-  UserMeasurements,
   ActivityLevel,
   FitnessGoal,
 } from "../types";
@@ -24,6 +22,7 @@ import {
   ACTIVITY_LABELS,
   GOAL_LABELS,
 } from "../utils/calculations";
+import { compressImage } from "../utils/imageCompressor";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -46,7 +45,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<UserProfile>(profile);
   const [activeSection, setActiveSection] = useState<
-    "profile" | "measurements" | "security" | "account"
+    "profile" | "security" | "account"
   >("profile");
 
   // Security / Password State
@@ -89,19 +88,33 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     onClose();
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const compressed = await compressImage(file, {
+        maxWidth: 320,
+        maxHeight: 320,
+        quality: 0.82,
+        mimeType: "image/jpeg",
+      });
       setFormData((prev) => ({
         ...prev,
-        avatarUrl: dataUrl,
+        avatarUrl: compressed,
       }));
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn("Avatar compression error, using fallback reader:", err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setFormData((prev) => ({
+          ...prev,
+          avatarUrl: dataUrl,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleRemovePhoto = () => {
@@ -160,17 +173,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     onClose();
   };
 
-  const updateMeasurement = (key: keyof UserMeasurements, value: string) => {
-    const num = value === "" ? undefined : parseFloat(value);
-    setFormData((prev) => ({
-      ...prev,
-      measurements: {
-        ...prev.measurements,
-        [key]: num,
-      },
-    }));
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
       <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl my-8 overflow-hidden">
@@ -225,20 +227,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             }`}
           >
             Perfil & Foto
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSection("measurements")}
-            className={`pb-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
-              activeSection === "measurements"
-                ? "border-[#007AFF] text-[#007AFF]"
-                : "border-transparent text-zinc-400 hover:text-white"
-            }`}
-          >
-            <span>Medidas</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 text-zinc-500 font-mono">
-              Opcional
-            </span>
           </button>
           {!isFirstSetup && (
             <>
@@ -587,211 +575,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </form>
         )}
 
-        {/* Section 2: Medidas */}
-        {activeSection === "measurements" && (
-          <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-            <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-[#007AFF] mt-0.5 shrink-0" />
-              <p className="text-xs text-zinc-300 leading-relaxed">
-                Todas as medidas corporais abaixo são <strong>100% opcionais</strong>. Você pode preencher apenas o que desejar acompanhar.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Peitoral (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.chest || ""}
-                  onChange={(e) => updateMeasurement("chest", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Cintura (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.waist || ""}
-                  onChange={(e) => updateMeasurement("waist", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Quadril (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.hips || ""}
-                  onChange={(e) => updateMeasurement("hips", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Braço Direito (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.rightArm || ""}
-                  onChange={(e) =>
-                    updateMeasurement("rightArm", e.target.value)
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Braço Esquerdo (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.leftArm || ""}
-                  onChange={(e) => updateMeasurement("leftArm", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Coxa Direita (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.rightThigh || ""}
-                  onChange={(e) =>
-                    updateMeasurement("rightThigh", e.target.value)
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Coxa Esquerda (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.leftThigh || ""}
-                  onChange={(e) =>
-                    updateMeasurement("leftThigh", e.target.value)
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Panturrilhas (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.calves || ""}
-                  onChange={(e) => updateMeasurement("calves", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Ombros (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.shoulders || ""}
-                  onChange={(e) => updateMeasurement("shoulders", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Pescoço (cm)
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={formData.measurements?.neck || ""}
-                  onChange={(e) => updateMeasurement("neck", e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Em branco"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-400 mb-1">
-                  Gordura Corporal (% BF)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={formData.measurements?.bodyFatPercentage || ""}
-                  onChange={(e) =>
-                    updateMeasurement("bodyFatPercentage", e.target.value)
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                  placeholder="Ex: 15.0"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-4 border-t border-zinc-900 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] disabled:opacity-70 disabled:cursor-not-allowed text-black text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin stroke-[2.5]" />
-                    <span>Salvando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    <span>Salvar Medidas</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Section 3: Alterar Senha */}
+        {/* Section 2: Alterar Senha */}
         {activeSection === "security" && (
           <form onSubmit={handlePasswordChange} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
             <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-1">

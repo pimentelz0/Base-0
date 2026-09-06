@@ -1,5 +1,5 @@
 import React from "react";
-import { User, ArrowLeft } from "lucide-react";
+import { User, ArrowLeft, Sun, Moon } from "lucide-react";
 import { UserProfile } from "../types";
 
 interface NavbarProps {
@@ -13,6 +13,8 @@ interface NavbarProps {
   isChatOpen: boolean;
   canGoBack?: boolean;
   onGoBack?: () => void;
+  theme?: "dark" | "light";
+  onToggleTheme?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,6 +24,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   profile,
   canGoBack = false,
   onGoBack,
+  theme = "dark",
+  onToggleTheme,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-zinc-900 bg-black/95 backdrop-blur-md">
@@ -55,15 +59,32 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Right side: Pure Minimalist Blue Profile Avatar Button */}
-        <div className="flex items-center">
+        {/* Right side: Theme Toggle + Pure Minimalist Blue Profile Avatar Button */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {onToggleTheme && (
+            <button
+              id="theme-toggle-btn"
+              type="button"
+              onClick={onToggleTheme}
+              className="w-10 h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 flex items-center justify-center transition-all shadow-sm active:scale-95 cursor-pointer group"
+              title={theme === "dark" ? "Mudar para modo claro" : "Mudar para modo escuro"}
+              aria-label={theme === "dark" ? "Mudar para modo claro" : "Mudar para modo escuro"}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-5 h-5 text-amber-400 group-hover:rotate-45 transition-transform stroke-[2.2]" />
+              ) : (
+                <Moon className="w-5 h-5 text-[#007AFF] group-hover:-rotate-12 transition-transform stroke-[2.2]" />
+              )}
+            </button>
+          )}
+
           <button
             id="open-profile-btn"
             onClick={onOpenProfile}
             className={`w-10 h-10 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black font-black flex items-center justify-center transition-all shadow-md shadow-[#007AFF]/20 hover:scale-105 overflow-hidden ${
-              activeTab === "profile" ? "ring-2 ring-white ring-offset-2 ring-offset-black" : ""
+              activeTab === "profile" ? "ring-2 ring-[#007AFF] ring-offset-2" : ""
             }`}
-            title="Conta, Perfil & Segurança"
+            title="Editar Perfil & Conta"
           >
             {profile.avatarUrl ? (
               <img
