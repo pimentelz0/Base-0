@@ -14,6 +14,7 @@ import {
   WeightLog,
   MealLog,
   ChatMessage,
+  ChatSession,
 } from "../types";
 import { StorageService } from "../utils/storage";
 import { MetricsOverview } from "./MetricsOverview";
@@ -23,6 +24,7 @@ import { MealTracker } from "./MealTracker";
 import { MeasurementsTracker } from "./MeasurementsTracker";
 import { GymProfileSettings } from "./GymProfileSettings";
 import { GulinhaChat } from "./GulinhaChat";
+import { GulinhaAvatar } from "./GulinhaAvatar";
 
 export type GymSectionType =
   | "overview"
@@ -39,6 +41,12 @@ interface GymTabProps {
   weightLogs: WeightLog[];
   mealLogs: MealLog[];
   chatMessages: ChatMessage[];
+  chatSessions?: ChatSession[];
+  activeChatSessionId?: string;
+  onSelectChatSession?: (sessionId: string) => void;
+  onNewChat?: () => void;
+  onDeleteChatSession?: (sessionId: string) => void;
+  onClearAllChatSessions?: () => void;
   waterIntake: number;
   activeGymSection?: GymSectionType;
   onChangeGymSection?: (sec: GymSectionType) => void;
@@ -60,6 +68,12 @@ export const GymTab: React.FC<GymTabProps> = ({
   weightLogs,
   mealLogs,
   chatMessages,
+  chatSessions = [],
+  activeChatSessionId,
+  onSelectChatSession,
+  onNewChat,
+  onDeleteChatSession,
+  onClearAllChatSessions,
   waterIntake,
   activeGymSection: controlledGymSection,
   onChangeGymSection,
@@ -124,7 +138,11 @@ export const GymTab: React.FC<GymTabProps> = ({
                       : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/60 font-semibold"
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? "stroke-[2.5]" : ""}`} />
+                  {item.id === "gulinha" ? (
+                    <GulinhaAvatar size="xs" />
+                  ) : (
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? "stroke-[2.5]" : ""}`} />
+                  )}
                   <span>{item.label}</span>
                 </button>
               );
@@ -198,6 +216,12 @@ export const GymTab: React.FC<GymTabProps> = ({
             isOpen={true}
             onClose={() => {}}
             messages={chatMessages}
+            sessions={chatSessions}
+            activeSessionId={activeChatSessionId}
+            onSelectSession={onSelectChatSession}
+            onNewChat={onNewChat}
+            onDeleteSession={onDeleteChatSession}
+            onClearAllSessions={onClearAllChatSessions}
             onSendMessage={onSendMessage}
             onClearChat={onClearChat}
             profile={profile}

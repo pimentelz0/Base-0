@@ -1,4 +1,4 @@
-import { UserProfile, WeightLog, MealLog, ChatMessage, NoteItem, AuthUser, WorkoutRoutine, WorkoutSessionLog } from "../types";
+import { UserProfile, WeightLog, MealLog, ChatMessage, ChatSession, NoteItem, AuthUser, WorkoutRoutine, WorkoutSessionLog } from "../types";
 
 const KEYS = {
   AUTH_USER: "base0_auth_user_v1",
@@ -6,6 +6,8 @@ const KEYS = {
   WEIGHT_LOGS: "base0_weight_logs_v1",
   MEAL_LOGS: "base0_meal_logs_v1",
   CHAT_MESSAGES: "base0_chat_messages_v1",
+  CHAT_SESSIONS: "base0_chat_sessions_v1",
+  ACTIVE_CHAT_SESSION_ID: "base0_active_chat_session_id_v1",
   WATER_INTAKE: "base0_water_intake_v1",
   NOTES: "base0_notes_v1",
   WORKOUT_ROUTINES: "base0_workout_routines_v1",
@@ -239,6 +241,71 @@ export const StorageService = {
 
   saveChatMessages(messages: ChatMessage[]): void {
     safeSetItem(KEYS.CHAT_MESSAGES, JSON.stringify(messages));
+  },
+
+  getChatSessions(): ChatSession[] {
+    try {
+      const saved = localStorage.getItem(KEYS.CHAT_SESSIONS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      // Migration from legacy chat messages if any exist
+      const legacyMsgs = this.getChatMessages();
+      if (legacyMsgs && legacyMsgs.length > 0) {
+        const initialSession: ChatSession = {
+          id: `session-${Date.now()}`,
+          title: legacyMsgs[0]?.content?.slice(0, 30) || "Conversa Salva",
+          createdAt: legacyMsgs[0]?.timestamp || new Date().toISOString(),
+          updatedAt: legacyMsgs[legacyMsgs.length - 1]?.timestamp || new Date().toISOString(),
+          messages: legacyMsgs,
+        };
+        this.saveChatSessions([initialSession]);
+        return [initialSession];
+      }
+    } catch (e) {
+      console.error("StorageService getChatSessions error:", e);
+    }
+    const defaultSession: ChatSession = {
+      id: `session-${Date.now()}`,
+      title: "Nova Conversa",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+    return [defaultSession];
+  },
+
+  saveChatSessions(sessions: ChatSession[]): void {
+    safeSetItem(KEYS.CHAT_SESSIONS, JSON.stringify(sessions));
+    // Mirror active session messages to legacy KEYS.CHAT_MESSAGES
+    const activeId = this.getActiveChatSessionId();
+    const active = sessions.find((s) => s.id === activeId) || sessions[0];
+    if (active) {
+      safeSetItem(KEYS.CHAT_MESSAGES, JSON.stringify(active.messages));
+    }
+  },
+
+  getActiveChatSessionId(): string | null {
+    try {
+      return localStorage.getItem(KEYS.ACTIVE_CHAT_SESSION_ID);
+    } catch (e) {
+      return null;
+    }
+  },
+
+  saveActiveChatSessionId(id: string | null): void {
+    try {
+      if (id) {
+        localStorage.setItem(KEYS.ACTIVE_CHAT_SESSION_ID, id);
+      } else {
+        localStorage.removeItem(KEYS.ACTIVE_CHAT_SESSION_ID);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   },
 
   getWaterIntake(dateStr: string): number {

@@ -256,14 +256,14 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
             <div
               className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-bold ${
                 passwordFeedback.type === "success"
-                  ? "bg-emerald-950/40 border border-emerald-500/40 text-emerald-300"
-                  : "bg-rose-950/40 border border-rose-500/40 text-rose-300"
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-500/40 dark:text-emerald-300"
+                  : "bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-500/40 dark:text-rose-300"
               }`}
             >
               {passwordFeedback.type === "success" ? (
-                <Check className="w-4 h-4 text-emerald-400" />
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               ) : (
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               )}
               <span>{passwordFeedback.message}</span>
             </div>
@@ -358,13 +358,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
           </div>
 
           {/* Excluir Conta */}
-          <div className="p-5 rounded-2xl bg-rose-950/20 border border-rose-900/40 space-y-3">
+          <div className="p-5 rounded-2xl bg-rose-50/90 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 space-y-3">
             <div>
-              <div className="text-sm font-bold text-rose-300 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <div className="text-sm font-bold text-rose-900 dark:text-rose-300 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                 <span>Zona de Perigo • Excluir Conta</span>
               </div>
-              <p className="text-xs text-rose-200/70 mt-1 leading-relaxed">
+              <p className="text-xs text-rose-950/80 dark:text-rose-200/70 mt-1 leading-relaxed font-medium">
                 Esta ação é irreversível. Todos os seus registros de pesagem, histórico de refeições, conversas com o Gulinha IA e notas serão permanentemente apagados.
               </p>
             </div>
@@ -373,27 +373,27 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-500 text-rose-300 hover:text-white text-xs font-bold transition-all"
+                className="px-4 py-2.5 rounded-xl bg-rose-100 hover:bg-rose-600 text-rose-800 hover:text-white border border-rose-300 hover:border-rose-600 dark:bg-rose-600/20 dark:hover:bg-rose-600 dark:border-rose-500/30 dark:hover:border-rose-500 dark:text-rose-300 dark:hover:text-white text-xs font-bold transition-all shadow-xs"
               >
                 Excluir Minha Conta
               </button>
             ) : (
-              <div className="p-4 rounded-xl bg-black/60 border border-rose-500/50 space-y-3 animate-fadeIn">
-                <p className="text-xs font-bold text-white">
+              <div className="p-4 rounded-xl bg-white dark:bg-black/60 border border-rose-200 dark:border-rose-500/50 space-y-3 animate-fadeIn shadow-sm">
+                <p className="text-xs font-bold text-zinc-900 dark:text-white">
                   Confirmar exclusão definitiva da conta e de todos os dados?
                 </p>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={handleExecuteDeleteAccount}
-                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-colors"
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black transition-colors shadow-sm"
                   >
                     Sim, Excluir Definitivamente
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors"
+                    className="px-4 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition-colors border border-zinc-200 dark:border-transparent"
                   >
                     Cancelar
                   </button>

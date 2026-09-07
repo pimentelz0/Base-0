@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X, Camera, Upload, Sparkles, Utensils, Check, AlertCircle, Plus, Trash2, Loader2, MessageSquare } from "lucide-react";
+import { X, Camera, Upload, Sparkles, Utensils, Check, AlertCircle, Plus, Trash2, Loader2, MessageSquare, Calculator, RefreshCw, CheckCircle2, Info } from "lucide-react";
 import { MealLog, MealCategory, MealItem, UserProfile } from "../types";
 import { compressImage } from "../utils/imageCompressor";
 import { GulinhaService } from "../services/gulinhaService";
@@ -38,10 +38,12 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
     const now = new Date();
     return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   });
-  const [manualCalories, setManualCalories] = useState<string>("500");
   const [manualProtein, setManualProtein] = useState<string>("35");
   const [manualCarbs, setManualCarbs] = useState<string>("50");
   const [manualFat, setManualFat] = useState<string>("15");
+  const [manualCalories, setManualCalories] = useState<string>("475");
+  const [autoCalcCalories, setAutoCalcCalories] = useState<boolean>(true);
+
   const [manualItems, setManualItems] = useState<Array<{ name: string; portion: string }>>([
     { name: "", portion: "" },
   ]);
@@ -52,6 +54,36 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // Atwater calculation values
+  const pNum = Math.max(0, Number(manualProtein) || 0);
+  const cNum = Math.max(0, Number(manualCarbs) || 0);
+  const fNum = Math.max(0, Number(manualFat) || 0);
+  const calculatedAtwaterKcal = Math.round(pNum * 4 + cNum * 4 + fNum * 9);
+
+  const handleUpdateProtein = (val: string) => {
+    setManualProtein(val);
+    if (autoCalcCalories) {
+      const p = Math.max(0, Number(val) || 0);
+      setManualCalories(String(Math.round(p * 4 + cNum * 4 + fNum * 9)));
+    }
+  };
+
+  const handleUpdateCarbs = (val: string) => {
+    setManualCarbs(val);
+    if (autoCalcCalories) {
+      const c = Math.max(0, Number(val) || 0);
+      setManualCalories(String(Math.round(pNum * 4 + c * 4 + fNum * 9)));
+    }
+  };
+
+  const handleUpdateFat = (val: string) => {
+    setManualFat(val);
+    if (autoCalcCalories) {
+      const f = Math.max(0, Number(val) || 0);
+      setManualCalories(String(Math.round(pNum * 4 + cNum * 4 + f * 9)));
+    }
+  };
 
   // Analysis result state (editable before confirming)
   const [analyzedMeal, setAnalyzedMeal] = useState<{
@@ -254,6 +286,14 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
     if (!analyzedMeal) return;
     const newItems = [...analyzedMeal.items];
     newItems[index] = { ...newItems[index], [field]: val };
+
+    // Se editar macros, sincroniza as calorias do item via regra de Atwater
+    if (field === "protein" || field === "carbs" || field === "fat") {
+      const p = Math.max(0, Number(field === "protein" ? val : newItems[index].protein) || 0);
+      const c = Math.max(0, Number(field === "carbs" ? val : newItems[index].carbs) || 0);
+      const f = Math.max(0, Number(field === "fat" ? val : newItems[index].fat) || 0);
+      newItems[index].calories = Math.round(p * 4 + c * 4 + f * 9);
+    }
     
     // Recalculate totals
     const totalCalories = newItems.reduce((a, b) => a + Number(b.calories || 0), 0);
@@ -427,9 +467,15 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
 
                   {/* Macronutrientes Principais */}
                   <div>
-                    <label className="block text-xs font-black uppercase tracking-wider text-zinc-400 mb-2">
-                      Informações Nutricionais (Estimadas ou Totais)
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-black uppercase tracking-wider text-zinc-400">
+                        Informações Nutricionais (Estimadas ou Totais)
+                      </label>
+                      <span className="text-[11px] text-zinc-500">
+                        Regra de Atwater: 1g P = 4 kcal | 1g C = 4 kcal | 1g G = 9 kcal
+                      </span>
+                    </div>
+
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div className="p-3 rounded-xl bg-zinc-900 border border-[#007AFF]/40">
                         <span className="text-[10px] uppercase font-black tracking-wider text-[#007AFF] block">
@@ -439,7 +485,10 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                           type="number"
                           min="0"
                           value={manualCalories}
-                          onChange={(e) => setManualCalories(e.target.value)}
+                          onChange={(e) => {
+                            setManualCalories(e.target.value);
+                            setAutoCalcCalories(false);
+                          }}
                           className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-[#007AFF]"
                         />
                       </div>
@@ -451,7 +500,7 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                           type="number"
                           min="0"
                           value={manualProtein}
-                          onChange={(e) => setManualProtein(e.target.value)}
+                          onChange={(e) => handleUpdateProtein(e.target.value)}
                           className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-blue-500"
                         />
                       </div>
@@ -463,7 +512,7 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                           type="number"
                           min="0"
                           value={manualCarbs}
-                          onChange={(e) => setManualCarbs(e.target.value)}
+                          onChange={(e) => handleUpdateCarbs(e.target.value)}
                           className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-amber-500"
                         />
                       </div>
@@ -475,9 +524,56 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                           type="number"
                           min="0"
                           value={manualFat}
-                          onChange={(e) => setManualFat(e.target.value)}
+                          onChange={(e) => handleUpdateFat(e.target.value)}
                           className="w-full mt-1 bg-transparent text-white font-mono font-black text-base outline-none focus:border-b border-emerald-500"
                         />
+                      </div>
+                    </div>
+
+                    {/* Atwater Formula Live Check & Synchronizer */}
+                    <div className="mt-2.5 p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-start sm:items-center gap-2">
+                        <Calculator className="w-4 h-4 text-[#007AFF] shrink-0 mt-0.5 sm:mt-0" />
+                        <div>
+                          <div className="text-zinc-300 font-medium">
+                            Cálculo exato pelos macronutrientes:
+                          </div>
+                          <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                            <span className="text-blue-400">{pNum}g P × 4 ({pNum * 4})</span> +{" "}
+                            <span className="text-amber-400">{cNum}g C × 4 ({cNum * 4})</span> +{" "}
+                            <span className="text-emerald-400">{fNum}g G × 9 ({fNum * 9})</span> ={" "}
+                            <strong className="text-white font-bold">{calculatedAtwaterKcal} kcal</strong>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <label className="flex items-center gap-1.5 text-[11px] text-zinc-400 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={autoCalcCalories}
+                            onChange={(e) => {
+                              setAutoCalcCalories(e.target.checked);
+                              if (e.target.checked) {
+                                setManualCalories(String(calculatedAtwaterKcal));
+                              }
+                            }}
+                            className="w-3.5 h-3.5 accent-[#007AFF] rounded cursor-pointer"
+                          />
+                          <span>Sincronizar automático</span>
+                        </label>
+                        {!autoCalcCalories && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManualCalories(String(calculatedAtwaterKcal));
+                              setAutoCalcCalories(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[#007AFF] text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            <span>Aplicar {calculatedAtwaterKcal} kcal</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -628,19 +724,34 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
               {/* Text Input Area */}
               {activeMode === "text" && (
                 <div className="space-y-3">
-                  <label className="block text-xs font-semibold text-zinc-300">
-                    O que você comeu nessa refeição?
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-zinc-300">
+                      O que você comeu nessa refeição?
+                    </label>
+                    <span className="text-[10px] text-zinc-400">
+                      Basta descrever em palavras simples
+                    </span>
+                  </div>
                   <textarea
                     rows={4}
                     value={descriptionText}
                     onChange={(e) => setDescriptionText(e.target.value)}
                     placeholder="Ex: 150g de peito de frango grelhado, 180g de arroz branco, 1 concha de feijão carioca, salada verde com 1 colher de azeite e 1 copo de suco de laranja natural..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-blue-500 leading-relaxed"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:outline-none focus:border-[#007AFF] leading-relaxed"
                   />
-                  <p className="text-[11px] text-zinc-400">
-                    O Gulinha irá calcular automaticamente as calorias, proteínas, carboidratos e gorduras de cada item.
-                  </p>
+                  {/* Explicação de como a IA calcula */}
+                  <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800 text-xs text-zinc-400 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-zinc-200 font-bold text-[11px]">
+                      <Sparkles className="w-3.5 h-3.5 text-[#007AFF]" />
+                      <span>Como o Gulinha e o app estipulam as calorias?</span>
+                    </div>
+                    <ul className="text-[11px] text-zinc-400 space-y-1 pl-4 list-disc marker:text-[#007AFF]">
+                      <li><strong>Identificação e porções:</strong> O Gulinha lê cada alimento e peso informado (ou estima porções médias brasileiras reais).</li>
+                      <li><strong>Bancos de dados oficiais:</strong> Utiliza as tabelas TACO (Tabela Brasileira de Composição de Alimentos) e USDA FoodData.</li>
+                      <li><strong>Regra científica de Atwater:</strong> Cada grama de proteína = 4 kcal, carboidrato = 4 kcal e gordura = 9 kcal. As calorias totais são a soma exata dos macronutrientes.</li>
+                      <li><strong>Revisão livre:</strong> Você visualiza a tabela de todos os itens e pode editar qualquer porção ou gramagem antes de salvar no diário.</li>
+                    </ul>
+                  </div>
                 </div>
               )}
 
@@ -756,6 +867,17 @@ export const MealAnalysisModal: React.FC<MealAnalysisModalProps> = ({
                     <div className="text-base font-black text-emerald-400 font-mono mt-0.5">
                       {analyzedMeal.totalFat}g
                     </div>
+                  </div>
+                </div>
+
+                {/* Validação de Atwater dos Totais */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-zinc-800/80 text-[11px] text-zinc-400">
+                  <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>Validação oficial Atwater: {analyzedMeal.totalProtein}g P (×4) + {analyzedMeal.totalCarbs}g C (×4) + {analyzedMeal.totalFat}g G (×9)</span>
+                  </div>
+                  <div className="font-mono text-zinc-300">
+                    Total calculado: <strong className="text-white">{analyzedMeal.totalCalories} kcal</strong>
                   </div>
                 </div>
               </div>

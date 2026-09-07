@@ -47,78 +47,86 @@ const COLOR_CONFIGS: Record<
     divider: string;
     trashHover: string;
     chipBg: string;
+    badge: string;
     label: string;
   }
 > = {
-  pink: {
-    bg: "bg-[#25131e]",
-    border: "border-[#f472b6]/40 hover:border-[#f472b6]",
-    text: "text-[#fbcfe8]",
-    titleColor: "text-[#f472b6]",
-    divider: "border-[#f472b6]/20",
-    trashHover: "hover:bg-[#f472b6]/20 text-[#f472b6]",
-    chipBg: "bg-[#f472b6]/20 text-[#f472b6] border-[#f472b6]/40",
-    label: "Rosa",
-  },
-  emerald: {
-    bg: "bg-[#0e2319]",
-    border: "border-[#34d399]/40 hover:border-[#34d399]",
-    text: "text-[#a7f3d0]",
-    titleColor: "text-[#34d399]",
-    divider: "border-[#34d399]/20",
-    trashHover: "hover:bg-[#34d399]/20 text-[#34d399]",
-    chipBg: "bg-[#34d399]/20 text-[#34d399] border-[#34d399]/40",
-    label: "Menta / Verde",
+  zinc: {
+    bg: "bg-white dark:bg-[#18181b]",
+    border: "border-slate-200 hover:border-slate-300 dark:border-zinc-800 dark:hover:border-zinc-700",
+    text: "text-zinc-800 dark:text-zinc-300",
+    titleColor: "text-zinc-950 dark:text-white",
+    divider: "border-slate-100 dark:border-zinc-800",
+    trashHover: "hover:bg-red-50 text-zinc-400 hover:text-red-500 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200",
+    chipBg: "bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
+    badge: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700",
+    label: "Geral",
   },
   blue: {
-    bg: "bg-[#0e1f32]",
-    border: "border-[#38bdf8]/40 hover:border-[#38bdf8]",
-    text: "text-[#bae6fd]",
-    titleColor: "text-[#38bdf8]",
-    divider: "border-[#38bdf8]/20",
-    trashHover: "hover:bg-[#38bdf8]/20 text-[#38bdf8]",
-    chipBg: "bg-[#38bdf8]/20 text-[#38bdf8] border-[#38bdf8]/40",
+    bg: "bg-white dark:bg-[#18181b]",
+    border: "border-slate-200 hover:border-sky-300 dark:border-zinc-800 dark:hover:border-sky-500/50",
+    text: "text-zinc-800 dark:text-zinc-300",
+    titleColor: "text-zinc-950 dark:text-white",
+    divider: "border-slate-100 dark:border-zinc-800",
+    trashHover: "hover:bg-red-50 text-zinc-400 hover:text-red-500 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-sky-400",
+    chipBg: "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/40",
+    badge: "bg-sky-500/10 text-sky-700 border-sky-500/25 dark:bg-sky-500/20 dark:text-sky-300 dark:border-sky-500/40",
     label: "Azul Céu",
   },
+  emerald: {
+    bg: "bg-white dark:bg-[#18181b]",
+    border: "border-slate-200 hover:border-emerald-300 dark:border-zinc-800 dark:hover:border-emerald-500/50",
+    text: "text-zinc-800 dark:text-zinc-300",
+    titleColor: "text-zinc-950 dark:text-white",
+    divider: "border-slate-100 dark:border-zinc-800",
+    trashHover: "hover:bg-red-50 text-zinc-400 hover:text-red-500 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-emerald-400",
+    chipBg: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40",
+    badge: "bg-emerald-500/10 text-emerald-700 border-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40",
+    label: "Menta / Verde",
+  },
   yellow: {
-    bg: "bg-[#241e0e]",
-    border: "border-[#fbbf24]/40 hover:border-[#fbbf24]",
-    text: "text-[#fef08a]",
-    titleColor: "text-[#fbbf24]",
-    divider: "border-[#fbbf24]/20",
-    trashHover: "hover:bg-[#fbbf24]/20 text-[#fbbf24]",
-    chipBg: "bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/40",
+    bg: "bg-white dark:bg-[#18181b]",
+    border: "border-slate-200 hover:border-amber-300 dark:border-zinc-800 dark:hover:border-amber-500/50",
+    text: "text-zinc-800 dark:text-zinc-300",
+    titleColor: "text-zinc-950 dark:text-white",
+    divider: "border-slate-100 dark:border-zinc-800",
+    trashHover: "hover:bg-red-50 text-zinc-400 hover:text-red-500 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-amber-400",
+    chipBg: "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40",
+    badge: "bg-amber-500/10 text-amber-700 border-amber-500/25 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40",
     label: "Amarelo",
   },
-  purple: {
-    bg: "bg-[#1c132c]",
-    border: "border-[#c084fc]/40 hover:border-[#c084fc]",
-    text: "text-[#e9d5ff]",
-    titleColor: "text-[#c084fc]",
-    divider: "border-[#c084fc]/20",
-    trashHover: "hover:bg-[#c084fc]/20 text-[#c084fc]",
-    chipBg: "bg-[#c084fc]/20 text-[#c084fc] border-[#c084fc]/40",
-    label: "Lavanda",
-  },
   orange: {
-    bg: "bg-[#27160d]",
-    border: "border-[#fb923c]/40 hover:border-[#fb923c]",
-    text: "text-[#fed7aa]",
-    titleColor: "text-[#fb923c]",
-    divider: "border-[#fb923c]/20",
-    trashHover: "hover:bg-[#fb923c]/20 text-[#fb923c]",
-    chipBg: "bg-[#fb923c]/20 text-[#fb923c] border-[#fb923c]/40",
+    bg: "bg-white dark:bg-[#18181b]",
+    border: "border-slate-200 hover:border-orange-300 dark:border-zinc-800 dark:hover:border-orange-500/50",
+    text: "text-zinc-800 dark:text-zinc-300",
+    titleColor: "text-zinc-950 dark:text-white",
+    divider: "border-slate-100 dark:border-zinc-800",
+    trashHover: "hover:bg-red-50 text-zinc-400 hover:text-red-500 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-orange-400",
+    chipBg: "bg-orange-500/10 text-orange-700 border-orange-500/30 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/40",
+    badge: "bg-orange-500/10 text-orange-700 border-orange-500/25 dark:bg-orange-500/20 dark:text-orange-300 dark:border-orange-500/40",
     label: "Laranja",
   },
-  zinc: {
-    bg: "bg-[#18181b]",
-    border: "border-zinc-700/60 hover:border-zinc-500",
-    text: "text-zinc-300",
-    titleColor: "text-white",
-    divider: "border-zinc-800",
-    trashHover: "hover:bg-zinc-800 text-zinc-400",
-    chipBg: "bg-zinc-800 text-zinc-300 border-zinc-700",
-    label: "Neutro",
+  purple: {
+    bg: "bg-white dark:bg-[#18181b]",
+    border: "border-slate-200 hover:border-purple-300 dark:border-zinc-800 dark:hover:border-purple-500/50",
+    text: "text-zinc-800 dark:text-zinc-300",
+    titleColor: "text-zinc-950 dark:text-white",
+    divider: "border-slate-100 dark:border-zinc-800",
+    trashHover: "hover:bg-red-50 text-zinc-400 hover:text-red-500 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-purple-400",
+    chipBg: "bg-purple-500/10 text-purple-700 border-purple-500/30 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/40",
+    badge: "bg-purple-500/10 text-purple-700 border-purple-500/25 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/40",
+    label: "Lavanda",
+  },
+  pink: {
+    bg: "bg-white dark:bg-[#18181b]",
+    border: "border-slate-200 hover:border-pink-300 dark:border-zinc-800 dark:hover:border-pink-500/50",
+    text: "text-zinc-800 dark:text-zinc-300",
+    titleColor: "text-zinc-950 dark:text-white",
+    divider: "border-slate-100 dark:border-zinc-800",
+    trashHover: "hover:bg-red-50 text-zinc-400 hover:text-red-500 dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-pink-400",
+    chipBg: "bg-pink-500/10 text-pink-700 border-pink-500/30 dark:bg-pink-500/20 dark:text-pink-300 dark:border-pink-500/40",
+    badge: "bg-pink-500/10 text-pink-700 border-pink-500/25 dark:bg-pink-500/20 dark:text-pink-300 dark:border-pink-500/40",
+    label: "Rosa",
   },
 };
 
@@ -142,7 +150,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
   // Form State
   const [formTitle, setFormTitle] = useState("");
   const [formContent, setFormContent] = useState("");
-  const [formColor, setFormColor] = useState<NoteColor>("pink");
+  const [formColor, setFormColor] = useState<NoteColor>("zinc");
   const [formDate, setFormDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
@@ -152,7 +160,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
   const [newChecklistText, setNewChecklistText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const openNewNoteModal = (color: NoteColor = "pink") => {
+  const openNewNoteModal = (color: NoteColor = "zinc") => {
     setEditingNote(null);
     setFormTitle("");
     setFormContent("");
@@ -167,7 +175,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
     setEditingNote(note);
     setFormTitle(note.title);
     setFormContent(note.content);
-    setFormColor(note.color || "pink");
+    setFormColor(note.color || "zinc");
     setFormDate(
       note.date
         ? note.date.split("T")[0]
@@ -326,19 +334,31 @@ export const NotesTab: React.FC<NotesTabProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
           {filteredNotes.map((note) => {
             const colorCfg =
-              COLOR_CONFIGS[note.color] || COLOR_CONFIGS.pink;
+              COLOR_CONFIGS[note.color] || COLOR_CONFIGS.zinc;
 
             return (
               <div
                 key={note.id}
                 onClick={() => openEditModal(note)}
-                className={`group relative rounded-[22px] p-4 flex flex-col justify-between border transition-all duration-200 cursor-pointer shadow-md hover:-translate-y-1 hover:shadow-xl min-h-[175px] sm:min-h-[195px] ${colorCfg.bg} ${colorCfg.border}`}
+                className={`group relative rounded-[22px] p-4 flex flex-col justify-between border transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 min-h-[175px] sm:min-h-[195px] ${colorCfg.bg} ${colorCfg.border}`}
               >
-                {/* Top Content Area */}
+                {/* Top Category Badge & Date */}
+                <div className="flex items-center justify-between gap-1 mb-2">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors ${colorCfg.badge}`}
+                  >
+                    {colorCfg.label}
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-500 font-medium">
+                    {formatDateShort(note.date)}
+                  </span>
+                </div>
+
+                {/* Content Area */}
                 <div className="flex-1 overflow-hidden pr-0.5">
                   {note.content ? (
                     <p
-                      className={`text-xs sm:text-[13px] leading-relaxed line-clamp-5 font-normal select-none break-words ${colorCfg.text}`}
+                      className={`text-xs sm:text-[13px] leading-relaxed line-clamp-4 font-normal select-none break-words ${colorCfg.text}`}
                     >
                       {note.content}
                     </p>
@@ -356,9 +376,9 @@ export const NotesTab: React.FC<NotesTabProps> = ({
                       {note.checklist.slice(0, 2).map((c) => (
                         <div
                           key={c.id}
-                          className="flex items-center gap-1.5 text-[11px] opacity-75 truncate"
+                          className="flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-400 truncate font-medium"
                         >
-                          <div className="w-1.5 h-1.5 rounded-full bg-current" />
+                          <div className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
                           <span className={c.done ? "line-through opacity-50" : ""}>
                             {c.text}
                           </span>
@@ -368,19 +388,16 @@ export const NotesTab: React.FC<NotesTabProps> = ({
                   )}
                 </div>
 
-                {/* Bottom Bar: Divider, Title, Date and Trash Button */}
+                {/* Bottom Bar: Divider, Title and Trash Button */}
                 <div className={`mt-3 pt-2.5 border-t ${colorCfg.divider}`}>
-                  <div className="flex items-end justify-between gap-1.5">
-                    {/* Title and Date */}
+                  <div className="flex items-center justify-between gap-1.5">
+                    {/* Title */}
                     <div className="flex-1 min-w-0 pr-1">
                       <h3
                         className={`text-xs sm:text-sm font-black font-['Outfit'] truncate leading-snug ${colorCfg.titleColor}`}
                       >
                         {note.title || "Sem título"}
                       </h3>
-                      <div className="text-[10px] sm:text-[11px] font-mono opacity-60 mt-0.5">
-                        {formatDateShort(note.date)}
-                      </div>
                     </div>
 
                     {/* Trash / Delete Button */}
@@ -400,14 +417,14 @@ export const NotesTab: React.FC<NotesTabProps> = ({
         </div>
       ) : (
         /* Empty State */
-        <div className="py-20 text-center flex flex-col items-center justify-center space-y-3 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/50">
-          <p className="text-sm text-zinc-400 font-mono">
+        <div className="py-20 text-center flex flex-col items-center justify-center space-y-3 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/50 shadow-sm">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 font-mono">
             {selectedMonth === "all"
               ? "Nenhuma nota criada ainda."
               : `Nenhuma nota encontrada para o mês selecionado.`}
           </p>
           <button
-            onClick={() => openNewNoteModal("pink")}
+            onClick={() => openNewNoteModal("zinc")}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#007AFF] text-black text-xs font-black transition-transform hover:scale-105"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
@@ -419,7 +436,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
       {/* Floating Action Button "+ Nova Ideia" matching screenshot */}
       <div className="fixed bottom-24 sm:bottom-8 right-6 z-40">
         <button
-          onClick={() => openNewNoteModal("pink")}
+          onClick={() => openNewNoteModal("zinc")}
           className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#007AFF] hover:bg-[#006fe6] text-black font-black shadow-2xl shadow-[#007AFF]/40 active:scale-95 transition-all text-xs sm:text-sm tracking-wide"
         >
           <Plus className="w-4 h-4 stroke-[3]" />

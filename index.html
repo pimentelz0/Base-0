@@ -32,7 +32,7 @@
     <script>
       (function() {
         try {
-          var saved = localStorage.getItem("base0_theme_v1");
+          var saved = localStorage.getItem("base0_theme") || localStorage.getItem("base0_theme_v1");
           if (saved === "light") {
             document.documentElement.classList.remove("dark");
             document.documentElement.classList.add("light");
@@ -44,7 +44,7 @@
       })();
     </script>
   </head>
-  <body class="bg-black text-zinc-100 antialiased selection:bg-blue-600 selection:text-white font-['Plus_Jakarta_Sans',sans-serif]">
+  <body class="bg-black text-zinc-100 antialiased font-['Plus_Jakarta_Sans',sans-serif]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

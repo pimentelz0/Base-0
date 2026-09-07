@@ -13,7 +13,6 @@ import {
   Scale,
   Dumbbell,
   Droplets,
-  LogIn,
 } from "lucide-react";
 import {
   UserProfile,
@@ -210,7 +209,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn pb-24">
       {/* Top Header with Greeting and Date */}
-      <div className="border-b border-zinc-900 pb-5">
+      <div className="border-b border-zinc-200 dark:border-zinc-900 pb-5">
         <h1 className="text-2xl sm:text-3xl font-black text-white font-['Outfit'] tracking-tight">
           {greeting}
           {profile.name ? (
@@ -227,7 +226,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </div>
 
       {/* Gráfico Simples de Produtividade */}
-      <div className="rounded-[22px] bg-zinc-950 border border-zinc-800/80 p-5 sm:p-6 shadow-xl relative overflow-hidden">
+      <div className="rounded-[22px] bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 p-5 sm:p-6 shadow-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#007AFF]/10 border border-[#007AFF]/30 flex items-center justify-center text-[#007AFF]">
@@ -252,7 +251,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
 
         {/* Minimalist Bar Chart */}
-        <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end pt-4 pb-2 border-b border-zinc-900 min-h-[140px]">
+        <div className="grid grid-cols-7 gap-2 sm:gap-4 items-end pt-4 pb-2 border-b border-zinc-200 dark:border-zinc-900 min-h-[140px]">
           {currentWeekDays.map((day, idx) => {
             const isSelected = idx === selectedDayIdx;
             const heightPercent = day.isPast ? Math.max(day.score, 18) : 10;
@@ -270,7 +269,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     day.isPast
                       ? isSelected
                         ? "text-[#007AFF] opacity-100"
-                        : "text-zinc-500 group-hover:text-zinc-300"
+                        : "text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300"
                       : "opacity-0"
                   }`}
                 >
@@ -278,7 +277,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                 </span>
 
                 {/* Bar */}
-                <div className="w-full max-w-[36px] bg-zinc-900 rounded-xl p-1 flex items-end h-[90px]">
+                <div className="w-full max-w-[36px] bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/60 dark:border-transparent rounded-xl p-1 flex items-end h-[90px]">
                   <div
                     style={{ height: `${heightPercent}%` }}
                     className={`w-full rounded-lg transition-all duration-500 ${
@@ -286,9 +285,9 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                         ? "bg-[#007AFF] shadow-lg shadow-[#007AFF]/40"
                         : day.isPast
                         ? isSelected
-                          ? "bg-zinc-200"
-                          : "bg-zinc-700 group-hover:bg-zinc-500"
-                        : "bg-zinc-800/40"
+                          ? "bg-zinc-900 dark:bg-zinc-200"
+                          : "bg-zinc-400 dark:bg-zinc-700 group-hover:bg-zinc-500 dark:group-hover:bg-zinc-500"
+                        : "bg-zinc-200 dark:bg-zinc-800/40"
                     }`}
                   />
                 </div>
@@ -299,8 +298,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
                     day.isToday
                       ? "text-[#007AFF]"
                       : isSelected
-                      ? "text-white"
-                      : "text-zinc-500 group-hover:text-zinc-300"
+                      ? "text-zinc-900 dark:text-white"
+                      : "text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
                   }`}
                 >
                   {day.label}
@@ -311,7 +310,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         </div>
 
         {/* Selected Day Quick Stats Bar */}
-        <div className="mt-4 pt-3 border-t border-zinc-900/80 space-y-3">
+        <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-900/80 space-y-3">
           <div className="flex items-center justify-between text-xs text-zinc-400 font-mono">
             <div className="flex items-center gap-1.5 text-zinc-300">
               <CalendarDays className="w-3.5 h-3.5 text-[#007AFF]" />
@@ -340,12 +339,6 @@ export const HomeTab: React.FC<HomeTabProps> = ({
 
           {/* Activity Breakdown Pills */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            {selectedDayData.breakdown.appAccess && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] font-semibold">
-                <LogIn className="w-3 h-3" />
-                Acesso ao App
-              </span>
-            )}
             {selectedDayData.breakdown.tasksDone > 0 && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
                 <CheckCircle2 className="w-3 h-3" />

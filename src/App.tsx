@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { UserProfile, WeightLog, MealLog, ChatMessage, NoteItem, AuthUser } from "./types";
+import { UserProfile, WeightLog, MealLog, ChatMessage, ChatSession, NoteItem, AuthUser } from "./types";
 import { StorageService, DEFAULT_PROFILE } from "./utils/storage";
 import { calculateMetrics } from "./utils/calculations";
 import { Navbar } from "./components/Navbar";
@@ -15,18 +15,70 @@ import { SupabaseModal } from "./components/SupabaseModal";
 import { GulinhaChat } from "./components/GulinhaChat";
 import { LoginScreen } from "./components/LoginScreen";
 import { SupabaseService } from "./lib/supabase";
-import { GulinhaService } from "./services/gulinhaService";
+import { GulinhaService, UserFitnessContext } from "./services/gulinhaService";
 
 export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => StorageService.getAuthUser());
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => StorageService.getWeightLogs());
   const [mealLogs, setMealLogs] = useState<MealLog[]>(() => StorageService.getMealLogs());
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => StorageService.getChatMessages());
+  
+  // Chat Sessions (like ChatGPT)
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => StorageService.getChatSessions());
+  const [activeChatSessionId, setActiveChatSessionId] = useState<string>(() => {
+    const saved = StorageService.getActiveChatSessionId();
+    const sessions = StorageService.getChatSessions();
+    if (saved && sessions.some((s) => s.id === saved)) return saved;
+    return sessions[0]?.id || `session-${Date.now()}`;
+  });
+
   const [notes, setNotes] = useState<NoteItem[]>(() => StorageService.getNotes());
   
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [waterIntake, setWaterIntake] = useState<number>(() => StorageService.getWaterIntake(todayStr));
+
+  // Theme state (Dark/Light mode)
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("base0_theme");
+      if (saved === "light" || saved === "dark") return saved;
+      if (document.documentElement.classList.contains("light")) return "light";
+    }
+    return "dark";
+  });
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      if (typeof window !== "undefined") {
+        localStorage.setItem("base0_theme", next);
+        if (next === "light") {
+          document.documentElement.classList.add("light");
+          document.documentElement.classList.remove("dark");
+        } else {
+          document.documentElement.classList.add("dark");
+          document.documentElement.classList.remove("light");
+        }
+      }
+      return next;
+    });
+  };
+
+  // Current active session and its messages
+  const activeSession = useMemo(() => {
+    return (
+      chatSessions.find((s) => s.id === activeChatSessionId) ||
+      chatSessions[0] || {
+        id: activeChatSessionId,
+        title: "Nova Conversa",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+      }
+    );
+  }, [chatSessions, activeChatSessionId]);
+
+  const chatMessages = activeSession.messages;
 
   // Navigation and Modals
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -131,7 +183,16 @@ export default function App() {
           const mergedChat = Array.from(map.values()).sort(
             (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
           );
-          setChatMessages(mergedChat);
+          setChatSessions((prev) => {
+            const current = prev.map((s, idx) => {
+              if (idx === 0) {
+                return { ...s, messages: mergedChat };
+              }
+              return s;
+            });
+            StorageService.saveChatSessions(current);
+            return current;
+          });
           StorageService.saveChatMessages(mergedChat);
         }
 
@@ -231,9 +292,15 @@ export default function App() {
       } \n\nSuas metas diárias de calorias (${calculatedMetrics.targetCalories} kcal) e TMB foram atualizadas.`,
       timestamp: new Date().toISOString(),
     };
-    const nextChat = [...chatMessages, autoBotMsg];
-    setChatMessages(nextChat);
-    StorageService.saveChatMessages(nextChat);
+    setChatSessions((prev) => {
+      const next = prev.map((s) =>
+        s.id === activeSession.id
+          ? { ...s, updatedAt: new Date().toISOString(), messages: [...s.messages, autoBotMsg] }
+          : s
+      );
+      StorageService.saveChatSessions(next);
+      return next;
+    });
     SupabaseService.syncChatMessage(autoBotMsg).catch(console.warn);
   };
 
@@ -262,9 +329,15 @@ export default function App() {
       content: `🥗 **Refeição adicionada com sucesso:** *${newMeal.title}* (${newMeal.totalCalories} kcal | ${newMeal.totalProtein}g Proteína).\n\n${newMeal.gulinhaFeedback || "Excelente escolha para seus objetivos físicos!"}`,
       timestamp: new Date().toISOString(),
     };
-    const nextChat = [...chatMessages, mealBotMsg];
-    setChatMessages(nextChat);
-    StorageService.saveChatMessages(nextChat);
+    setChatSessions((prev) => {
+      const next = prev.map((s) =>
+        s.id === activeSession.id
+          ? { ...s, updatedAt: new Date().toISOString(), messages: [...s.messages, mealBotMsg] }
+          : s
+      );
+      StorageService.saveChatSessions(next);
+      return next;
+    });
     SupabaseService.syncChatMessage(mealBotMsg).catch(console.warn);
   };
 
@@ -311,7 +384,66 @@ export default function App() {
     StorageService.saveNotes(next);
   };
 
-  // Gulinha Chat Message Dispatcher
+  // Chat Sessions handlers (like ChatGPT)
+  const handleNewChat = () => {
+    const newSession: ChatSession = {
+      id: `session-${Date.now()}`,
+      title: "Nova Conversa",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+    const updated = [newSession, ...chatSessions];
+    setChatSessions(updated);
+    setActiveChatSessionId(newSession.id);
+    StorageService.saveChatSessions(updated);
+    StorageService.saveActiveChatSessionId(newSession.id);
+  };
+
+  const handleSelectChatSession = (sessionId: string) => {
+    setActiveChatSessionId(sessionId);
+    StorageService.saveActiveChatSessionId(sessionId);
+  };
+
+  const handleDeleteChatSession = (sessionId: string) => {
+    const remaining = chatSessions.filter((s) => s.id !== sessionId);
+    if (remaining.length === 0) {
+      const fresh: ChatSession = {
+        id: `session-${Date.now()}`,
+        title: "Nova Conversa",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [],
+      };
+      setChatSessions([fresh]);
+      setActiveChatSessionId(fresh.id);
+      StorageService.saveChatSessions([fresh]);
+      StorageService.saveActiveChatSessionId(fresh.id);
+    } else {
+      setChatSessions(remaining);
+      StorageService.saveChatSessions(remaining);
+      if (activeChatSessionId === sessionId) {
+        setActiveChatSessionId(remaining[0].id);
+        StorageService.saveActiveChatSessionId(remaining[0].id);
+      }
+    }
+  };
+
+  const handleClearAllChatSessions = () => {
+    const fresh: ChatSession = {
+      id: `session-${Date.now()}`,
+      title: "Nova Conversa",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+    setChatSessions([fresh]);
+    setActiveChatSessionId(fresh.id);
+    StorageService.saveChatSessions([fresh]);
+    StorageService.saveActiveChatSessionId(fresh.id);
+  };
+
+  // Gulinha Chat Message Dispatcher with FULL APP CONTEXT across all tabs
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -320,16 +452,120 @@ export default function App() {
       timestamp: new Date().toISOString(),
     };
 
-    const newMessages = [...chatMessages, userMsg];
-    setChatMessages(newMessages);
+    const targetSessionId = activeSession.id;
+    const currentMsgs = activeSession.messages;
+    const updatedWithUser = [...currentMsgs, userMsg];
+
+    // Determine smart title if it's the first user message
+    let sessionTitle = activeSession.title;
+    if (
+      (!sessionTitle || sessionTitle === "Nova Conversa" || sessionTitle === "Conversa Sem Título" || sessionTitle === "Conversa Inicial") &&
+      userMsg.content.trim().length > 0
+    ) {
+      sessionTitle = userMsg.content.trim().slice(0, 32);
+      if (userMsg.content.trim().length > 32) sessionTitle += "...";
+    }
+
+    const sessionsAfterUser = chatSessions.map((s) => {
+      if (s.id === targetSessionId) {
+        return {
+          ...s,
+          title: sessionTitle,
+          updatedAt: new Date().toISOString(),
+          messages: updatedWithUser,
+        };
+      }
+      return s;
+    });
+
+    setChatSessions(sessionsAfterUser);
+    StorageService.saveChatSessions(sessionsAfterUser);
     SupabaseService.syncChatMessage(userMsg).catch(console.warn);
 
-    // Prepare context for backend Gulinha AI
-    const todayMeals = mealLogs.filter((m) => m.date === todayStr);
-    const todayCalories = todayMeals.reduce((a, b) => a + b.totalCalories, 0);
-    const todayProtein = todayMeals.reduce((a, b) => a + b.totalProtein, 0);
+    // Initial placeholder bot message for real-time typewriter stream
+    const botMsgId = `bot-${Date.now()}`;
+    const initialBotMsg: ChatMessage = {
+      id: botMsgId,
+      role: "model",
+      content: "",
+      isStreaming: true,
+      timestamp: new Date().toISOString(),
+    };
 
-    const userContext = {
+    const sessionsWithBotPending = sessionsAfterUser.map((s) => {
+      if (s.id === targetSessionId) {
+        return {
+          ...s,
+          messages: [...s.messages, initialBotMsg],
+        };
+      }
+      return s;
+    });
+
+    setChatSessions(sessionsWithBotPending);
+
+    // ==========================================
+    // AGGREGATE COMPLETE DATA FROM ALL APP TABS
+    // ==========================================
+
+    // 1. Refeições e Nutrição (Aba GYM)
+    const todayMeals = mealLogs.filter((m) => m.date === todayStr);
+    const todayCalories = todayMeals.reduce((a, b) => a + (b.totalCalories || 0), 0);
+    const todayProtein = todayMeals.reduce((a, b) => a + (b.totalProtein || 0), 0);
+    const todayCarbs = todayMeals.reduce((a, b) => a + (b.totalCarbs || 0), 0);
+    const todayFat = todayMeals.reduce((a, b) => a + (b.totalFat || 0), 0);
+
+    const todayMealsSummary = todayMeals.length > 0
+      ? todayMeals
+          .map((m) => `${m.title} [${m.category}]: ${m.totalCalories} kcal, ${m.totalProtein}g prot, ${m.totalCarbs || 0}g carb, ${m.totalFat || 0}g gord`)
+          .join("; ")
+      : "Nenhuma refeição registrada hoje ainda";
+
+    const recentMealsHistory = mealLogs
+      .slice(0, 6)
+      .map((m) => `${m.date} - ${m.title} (${m.totalCalories} kcal)`)
+      .join("; ");
+
+    // 2. Pesagens e Evolução de Peso
+    const recentWeights = weightLogs.length > 0
+      ? weightLogs
+          .slice(0, 6)
+          .map((w) => `${w.date}: ${w.weight}kg${w.note ? ` (${w.note})` : ""}`)
+          .join(" -> ")
+      : "Apenas peso cadastrado";
+
+    const weightDiff = (profile.currentWeight - profile.startWeight).toFixed(1);
+    const targetDiff = (profile.currentWeight - profile.targetWeight).toFixed(1);
+    const weightEvolutionSummary = `Peso inicial: ${profile.startWeight}kg, Peso atual: ${profile.currentWeight}kg (${Number(weightDiff) > 0 ? "+" : ""}${weightDiff}kg). Meta: ${profile.targetWeight}kg (distância: ${targetDiff}kg).`;
+
+    // 3. Rotinas de Treino (Aba GYM)
+    const routines = StorageService.getWorkoutRoutines();
+    const workoutRoutinesSummary = routines && routines.length > 0
+      ? routines
+          .map(
+            (r) =>
+              `${r.name}: ${r.exercises
+                .map((e) =>
+                  e.sets && e.sets.length > 0
+                    ? `${e.name} (${e.sets.length} séries, ${e.sets[0].weight}kg x ${e.sets[0].reps} reps)`
+                    : e.name
+                )
+                .join(", ")}`
+          )
+          .join(" | ")
+      : "Nenhuma rotina de treino cadastrada";
+
+    // 4. Sessões de Treino Concluídas
+    const workoutLogs = StorageService.getWorkoutLogs();
+    const recentWorkoutLogs = workoutLogs && workoutLogs.length > 0
+      ? workoutLogs
+          .slice(0, 5)
+          .map((w) => `${w.date} (${w.routineName || "Treino"}): ${w.durationMinutes}min, ${w.totalVolumeKg || 0}kg volume total`)
+          .join("; ")
+      : "Nenhum histórico recente de treino";
+
+    // Contexto estritamente restrito à aba GYM (treinos, nutrição, água, pesagens e medidas)
+    const userContext: UserFitnessContext = {
       name: profile.name,
       height: profile.height,
       weight: profile.currentWeight,
@@ -338,61 +574,121 @@ export default function App() {
       goal: profile.goal,
       gender: profile.gender,
       age: profile.age,
+      activityLevel: profile.activityLevel,
       tmb: calculatedMetrics.tmb,
       get: calculatedMetrics.get,
       imc: calculatedMetrics.imc,
       imcCategory: calculatedMetrics.imcCategory,
       measurements: profile.measurements,
+      // Nutrição da GYM
       todayCalories,
       targetCalories: calculatedMetrics.targetCalories,
       todayProtein,
       targetProtein: calculatedMetrics.targetProtein,
-      todayMealsSummary: todayMeals.map((m) => `${m.title} (${m.totalCalories}kcal, ${m.totalProtein}g prot)`).join("; "),
-      recentWeights: weightLogs.slice(0, 4).map((w) => `${w.weight}kg`).join(" -> "),
+      todayCarbs,
+      targetCarbs: calculatedMetrics.targetCarbs,
+      todayFat,
+      targetFat: calculatedMetrics.targetFat,
+      todayMealsSummary,
+      recentMealsHistory,
+      // Hidratação
+      todayWaterMl: waterIntake,
+      targetWaterMl: Math.round(profile.currentWeight * 35),
+      // Pesagens e Evolução
+      recentWeights,
+      weightEvolutionSummary,
+      // Treinos e Rotinas da GYM
+      workoutRoutinesSummary,
+      recentWorkoutLogs,
     };
 
+    let accumulatedContent = "";
     try {
-      const reply = await GulinhaService.chat(
-        newMessages.map((m) => ({ role: m.role, content: m.content })),
-        userContext
+      const finalReply = await GulinhaService.chatStream(
+        updatedWithUser.map((m) => ({ role: m.role, content: m.content })),
+        userContext,
+        (_chunk, accumulated) => {
+          accumulatedContent = accumulated;
+          setChatSessions((prev) =>
+            prev.map((s) => {
+              if (s.id === targetSessionId) {
+                return {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === botMsgId
+                      ? { ...m, content: accumulated, isStreaming: true }
+                      : m
+                  ),
+                };
+              }
+              return s;
+            })
+          );
+        }
       );
 
-      const botMsg: ChatMessage = {
-        id: `bot-${Date.now()}`,
+      const finalBotMsg: ChatMessage = {
+        id: botMsgId,
         role: "model",
-        content: reply || "Excelente pergunta! Como posso te ajudar mais?",
+        content: finalReply || accumulatedContent || "Excelente pergunta! Como posso te ajudar mais?",
+        isStreaming: false,
         timestamp: new Date().toISOString(),
       };
-      setChatMessages((prev) => [...prev, botMsg]);
-      SupabaseService.syncChatMessage(botMsg).catch(console.warn);
+
+      setChatSessions((prev) => {
+        const next = prev.map((s) => {
+          if (s.id === targetSessionId) {
+            return {
+              ...s,
+              updatedAt: new Date().toISOString(),
+              messages: s.messages.map((m) => (m.id === botMsgId ? finalBotMsg : m)),
+            };
+          }
+          return s;
+        });
+        StorageService.saveChatSessions(next);
+        return next;
+      });
+
+      SupabaseService.syncChatMessage(finalBotMsg).catch(console.warn);
     } catch (err: any) {
       console.error("Erro no Gulinha Chat:", err);
       const fallbackMsg: ChatMessage = {
-        id: `bot-err-${Date.now()}`,
+        id: botMsgId,
         role: "model",
         content:
           err?.message?.includes("VITE_GEMINI_API_KEY") || err?.message?.includes("GEMINI_API_KEY")
             ? `⚠️ ${err.message}`
-            : "Ops! Tive uma oscilação na conexão com o servidor. Mas mantenha o foco: sua TMB atual é " +
+            : "Ops! Tive uma oscilação na conexão com o servidor. Mas lembre-se: sua TMB é de **" +
               calculatedMetrics.tmb +
-              " kcal e meta de " +
+              " kcal**, sua meta diária é **" +
               calculatedMetrics.targetCalories +
-              " kcal!",
+              " kcal** e você consumiu **" +
+              todayCalories +
+              " kcal** hoje. Como posso te orientar agora?",
+        isStreaming: false,
         timestamp: new Date().toISOString(),
       };
-      setChatMessages((prev) => [...prev, fallbackMsg]);
+
+      setChatSessions((prev) => {
+        const next = prev.map((s) => {
+          if (s.id === targetSessionId) {
+            return {
+              ...s,
+              updatedAt: new Date().toISOString(),
+              messages: s.messages.map((m) => (m.id === botMsgId ? fallbackMsg : m)),
+            };
+          }
+          return s;
+        });
+        StorageService.saveChatSessions(next);
+        return next;
+      });
     }
   };
 
   const handleClearChat = () => {
-    setChatMessages([
-      {
-        id: `c-init-${Date.now()}`,
-        role: "model",
-        content: "Conversa reiniciada! Sou o **Gulinha**, sua inteligência artificial no Base 0. O que vamos planejar hoje?",
-        timestamp: new Date().toISOString(),
-      },
-    ]);
+    handleNewChat();
   };
 
   const handleLogin = (user: AuthUser, initialName?: string) => {
@@ -427,14 +723,24 @@ export default function App() {
     setMealLogs([]);
     setNotes([]);
     setWaterIntake(0);
-    setChatMessages([
-      {
-        id: `c-init-${Date.now()}`,
-        role: "model",
-        content: "Conta reiniciada com sucesso! Sou o **Gulinha**, pronto para começar um novo ciclo com você.",
-        timestamp: new Date().toISOString(),
-      },
-    ]);
+    const fresh: ChatSession = {
+      id: `session-${Date.now()}`,
+      title: "Nova Conversa",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [
+        {
+          id: `c-init-${Date.now()}`,
+          role: "model",
+          content: "Conta reiniciada com sucesso! Sou o **Gulinha**, pronto para começar um novo ciclo com você.",
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    };
+    setChatSessions([fresh]);
+    setActiveChatSessionId(fresh.id);
+    StorageService.saveChatSessions([fresh]);
+    StorageService.saveActiveChatSessionId(fresh.id);
     setActiveTab("home");
   };
 
@@ -443,15 +749,23 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 flex flex-col grid-bg-pattern relative selection:bg-blue-600 selection:text-white w-full overflow-x-hidden">
+    <div
+      className={`min-h-screen flex flex-col grid-bg-pattern relative w-full overflow-x-hidden transition-colors ${
+        theme === "dark" ? "bg-black text-zinc-100" : "bg-[#f8fafc] text-zinc-900"
+      }`}
+    >
       {/* Ambient background glow */}
-      <div className="fixed inset-0 bg-radial-ambient pointer-events-none z-0" />
+      <div
+        className={`fixed inset-0 pointer-events-none z-0 ${
+          theme === "dark" ? "bg-radial-ambient" : "bg-radial-ambient opacity-50"
+        }`}
+      />
 
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={handleNavigateTab}
-        canGoBack={activeTab !== "home" || (activeTab === "gym" && gymSection !== "overview")}
+        canGoBack={activeTab === "gym" ? gymSection !== "overview" || tabHistory.length > 1 : activeTab !== "home"}
         onGoBack={handleGoBack}
         onOpenProfile={() => setIsProfileModalOpen(true)}
         onOpenChat={() => setIsFloatingChatOpen((prev) => !prev)}
@@ -459,6 +773,8 @@ export default function App() {
         onOpenSupabase={() => setIsSupabaseModalOpen(true)}
         profile={profile}
         isChatOpen={isFloatingChatOpen}
+        theme={theme}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Main Content Area with bottom padding for fixed navigation bar */}
@@ -479,6 +795,12 @@ export default function App() {
             weightLogs={weightLogs}
             mealLogs={mealLogs}
             chatMessages={chatMessages}
+            chatSessions={chatSessions}
+            activeChatSessionId={activeChatSessionId}
+            onSelectChatSession={handleSelectChatSession}
+            onNewChat={handleNewChat}
+            onDeleteChatSession={handleDeleteChatSession}
+            onClearAllChatSessions={handleClearAllChatSessions}
             waterIntake={waterIntake}
             activeGymSection={gymSection}
             onChangeGymSection={setGymSection}
@@ -526,6 +848,12 @@ export default function App() {
           isOpen={isFloatingChatOpen}
           onClose={() => setIsFloatingChatOpen(false)}
           messages={chatMessages}
+          sessions={chatSessions}
+          activeSessionId={activeChatSessionId}
+          onSelectSession={handleSelectChatSession}
+          onNewChat={handleNewChat}
+          onDeleteSession={handleDeleteChatSession}
+          onClearAllSessions={handleClearAllChatSessions}
           onSendMessage={handleSendMessage}
           onClearChat={handleClearChat}
           profile={profile}
@@ -567,7 +895,14 @@ export default function App() {
           if (data.profile) setProfile(data.profile);
           if (data.weightLogs) setWeightLogs(data.weightLogs);
           if (data.mealLogs) setMealLogs(data.mealLogs);
-          if (data.chatMessages) setChatMessages(data.chatMessages);
+          if (data.chatMessages) {
+            setChatSessions((prev) => {
+              const updated = prev.map((s, idx) => (idx === 0 ? { ...s, messages: data.chatMessages! } : s));
+              StorageService.saveChatSessions(updated);
+              return updated;
+            });
+            StorageService.saveChatMessages(data.chatMessages);
+          }
           if (data.waterIntake !== undefined) setWaterIntake(data.waterIntake);
         }}
       />

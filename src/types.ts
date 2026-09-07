@@ -84,6 +84,15 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   isMealInsight?: boolean;
+  isStreaming?: boolean;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
 }
 
 export interface CalculatedMetrics {

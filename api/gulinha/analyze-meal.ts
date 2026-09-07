@@ -9,18 +9,41 @@ function getApiKey(): string {
 }
 
 async function generateWithModelFallback(ai: GoogleGenAI, params: any) {
-  const candidateModels = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-flash-latest"];
+  const candidateModels = [
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-3.1-pro-preview",
+  ];
   let lastErr: any;
+
   for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        ...params,
-        model,
-      });
-      return response;
-    } catch (err: any) {
-      lastErr = err;
-      console.warn(`Tentativa com modelo ${model} falhou: ${err?.message || err}. Tentando próximo modelo...`);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          ...params,
+          model,
+        });
+        return response;
+      } catch (err: any) {
+        lastErr = err;
+        const errStr = String(err?.message || err);
+        const isTemporary =
+          errStr.includes("503") ||
+          errStr.includes("high demand") ||
+          errStr.includes("429") ||
+          errStr.includes("RESOURCE_EXHAUSTED");
+
+        console.warn(
+          `Tentativa com modelo ${model} (tentativa ${attempt + 1}) falhou: ${errStr}.`
+        );
+
+        if (isTemporary && attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 600));
+          continue;
+        }
+        break;
+      }
     }
   }
   throw lastErr;
