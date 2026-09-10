@@ -6,9 +6,20 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay",
+    "minimal-ui"
+  ],
   "orientation": "portrait",
-  "background_color": "#007AFF",
-  "theme_color": "#007AFF",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "prefer_related_applications": false,
+  "categories": [
+    "fitness",
+    "health",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/pwa-192x192.png",

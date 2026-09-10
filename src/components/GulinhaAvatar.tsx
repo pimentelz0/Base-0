@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Dumbbell } from "lucide-react";
+import cartoonGulinhaSrc from "../assets/images/gulinha_cartoon_avatar_1789060343061.jpg";
 
 export interface GulinhaAvatarProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl";
@@ -10,7 +11,7 @@ export interface GulinhaAvatarProps {
   isTyping?: boolean;
 }
 
-const AVATAR_SRC = "/gulinha-avatar.jpg";
+const AVATAR_SRC = cartoonGulinhaSrc;
 
 export const GulinhaAvatar: React.FC<GulinhaAvatarProps> = ({
   size = "md",

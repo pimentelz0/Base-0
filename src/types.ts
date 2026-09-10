@@ -162,3 +162,44 @@ export interface WorkoutSessionLog {
   completedSetsCount: number;
   notes?: string;
 }
+
+export interface ProjectNote {
+  id: string;
+  title: string;
+  content: string;
+  color: NoteColor;
+  checklist?: { id: string; text: string; done: boolean }[];
+  updatedAt?: string;
+}
+
+export interface ProjectTask {
+  id: string;
+  text: string;
+  completed: boolean;
+  dueDate?: string;
+}
+
+export interface ProjectChatMessage {
+  id: string;
+  role: "user" | "model";
+  content: string;
+  timestamp: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  audioDurationSeconds?: number;
+  isStreaming?: boolean;
+}
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  description: string;
+  category?: string;
+  status?: "active" | "completed" | "archived";
+  color?: string;
+  createdAt: string;
+  updatedAt: string;
+  notes: ProjectNote[];
+  chatMessages: ProjectChatMessage[];
+  tasks?: ProjectTask[];
+}

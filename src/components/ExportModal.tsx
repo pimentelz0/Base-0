@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Download, Copy, Check, Sparkles, Layers, FileJson, Share2 } from "lucide-react";
+import { X, Download, Copy, Check, Sparkles, Layers, FileJson, Share2, Smartphone, CheckCircle2 } from "lucide-react";
 import { Base0Icon } from "./Base0Icon";
 import { UserProfile, WeightLog, MealLog } from "../types";
 
@@ -95,15 +95,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         {/* Icon Preview Box */}
-        <div className="p-6 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex flex-col items-center justify-center text-center space-y-4">
-          <div className="p-4 rounded-3xl bg-black border border-blue-500/30 shadow-2xl shadow-blue-500/20">
+        <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center space-y-4">
+          <div className="p-4 rounded-3xl bg-zinc-100 dark:bg-black border border-blue-500/30 shadow-2xl shadow-blue-500/20">
             <Base0Icon size={96} />
           </div>
           <div>
-            <div className="text-sm font-extrabold text-white font-['Outfit']">
+            <div className="text-sm font-extrabold text-zinc-900 dark:text-white font-['Outfit']">
               Base 0 — Apex Geometric Icon
             </div>
-            <div className="text-xs text-zinc-400 mt-0.5">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Pronto para Favicon, PWA e Vercel Deployment Badge
             </div>
           </div>
@@ -118,7 +118,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </button>
             <button
               onClick={handleCopySvg}
-              className="py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              className="py-2.5 px-4 rounded-xl bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
             >
               {copiedSvg ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
               <span>{copiedSvg ? "Copiado!" : "Copiar Código"}</span>
@@ -126,22 +126,47 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
         </div>
 
+        {/* PWA Mobile Installation Guide */}
+        <div className="p-4 rounded-xl bg-blue-500/5 dark:bg-zinc-900/60 border border-blue-500/25 space-y-3">
+          <div className="flex items-center gap-2 text-[#007AFF] text-xs font-bold font-['Outfit'] uppercase tracking-wider">
+            <Smartphone className="w-4 h-4" />
+            <span>Como Abrir como App Real na Tela Inicial</span>
+          </div>
+          <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
+            Ao adicionar à tela inicial pelo link da Vercel, o app abre sem barras de navegador e sempre conectado:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-zinc-600 dark:text-zinc-400">
+            <div className="p-2.5 rounded-lg bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 space-y-1">
+              <span className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" /> iPhone / iPad (Safari)
+              </span>
+              <p>Toque em <strong>Compartilhar</strong> (ícone do quadrado com seta) e selecione <strong>Adicionar à Tela de Início</strong>.</p>
+            </div>
+            <div className="p-2.5 rounded-lg bg-white dark:bg-black/50 border border-zinc-200 dark:border-zinc-800 space-y-1">
+              <span className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-blue-500" /> Android (Chrome)
+              </span>
+              <p>Toque nos <strong>3 pontinhos</strong> no topo e escolha <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong>.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Data Backup Option */}
-        <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/80 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-zinc-800 text-blue-400">
+            <div className="p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-blue-500 dark:text-blue-400">
               <FileJson className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-xs font-bold text-white">Backup dos Dados Base 0</div>
-              <div className="text-[11px] text-zinc-400">
+              <div className="text-xs font-bold text-zinc-900 dark:text-white">Backup dos Dados Base 0</div>
+              <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
                 {weightLogs.length} pesagens, {mealLogs.length} refeições
               </div>
             </div>
           </div>
           <button
             onClick={handleExportDataJson}
-            className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition-colors"
           >
             Exportar JSON
           </button>
@@ -150,7 +175,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <div className="flex justify-end pt-2">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold"
+            className="px-5 py-2 rounded-xl bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-300 text-xs font-semibold"
           >
             Fechar
           </button>

@@ -39,9 +39,11 @@ function getGenAI() {
 async function generateWithModelFallback(ai: GoogleGenAI, params: any, customModels?: string[]) {
   // Official valid models according to @google/genai guidelines, ordered for lowest latency & fastest response
   const candidateModels = customModels && customModels.length > 0 ? customModels : [
-    "gemini-3.1-flash-lite",
-    "gemini-3.8-flash",
+    "gemini-2.5-flash",
     "gemini-flash-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3.8-flash",
   ];
   let lastErr: any;
 
@@ -62,20 +64,27 @@ async function generateWithModelFallback(ai: GoogleGenAI, params: any, customMod
         return response;
       } catch (err: any) {
         lastErr = err;
-        const errStr = String(err?.message || err);
-        const isTemporary =
-          errStr.includes("503") ||
-          errStr.includes("high demand") ||
-          errStr.includes("429") ||
-          errStr.includes("RESOURCE_EXHAUSTED");
+        const errStr = String(err?.message || err).toLowerCase();
+        const isQuotaExhausted =
+          errStr.includes("resource_exhausted") ||
+          errStr.includes("quota") ||
+          errStr.includes("rate_limit");
 
         console.warn(
           `Tentativa com modelo ${model} (tentativa ${attempt + 1}) falhou: ${errStr}.`
         );
 
+        if (isQuotaExhausted) {
+          break;
+        }
+
+        const isTemporary =
+          errStr.includes("503") ||
+          errStr.includes("high demand") ||
+          errStr.includes("429");
+
         if (isTemporary && attempt === 0) {
-          // Breve pausa para picos de demanda antes de tentar novamente ou alternar
-          await new Promise((resolve) => setTimeout(resolve, 400));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           continue;
         }
         break;
@@ -87,9 +96,11 @@ async function generateWithModelFallback(ai: GoogleGenAI, params: any, customMod
 
 async function generateStreamWithModelFallback(ai: GoogleGenAI, params: any, customModels?: string[]) {
   const candidateModels = customModels && customModels.length > 0 ? customModels : [
-    "gemini-3.1-flash-lite",
-    "gemini-3.8-flash",
+    "gemini-2.5-flash",
     "gemini-flash-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3.8-flash",
   ];
   let lastErr: any;
 
@@ -109,19 +120,27 @@ async function generateStreamWithModelFallback(ai: GoogleGenAI, params: any, cus
         return streamResponse;
       } catch (err: any) {
         lastErr = err;
-        const errStr = String(err?.message || err);
-        const isTemporary =
-          errStr.includes("503") ||
-          errStr.includes("high demand") ||
-          errStr.includes("429") ||
-          errStr.includes("RESOURCE_EXHAUSTED");
+        const errStr = String(err?.message || err).toLowerCase();
+        const isQuotaExhausted =
+          errStr.includes("resource_exhausted") ||
+          errStr.includes("quota") ||
+          errStr.includes("rate_limit");
 
         console.warn(
           `Tentativa de stream com modelo ${model} (tentativa ${attempt + 1}) falhou: ${errStr}.`
         );
 
+        if (isQuotaExhausted) {
+          break;
+        }
+
+        const isTemporary =
+          errStr.includes("503") ||
+          errStr.includes("high demand") ||
+          errStr.includes("429");
+
         if (isTemporary && attempt === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 400));
+          await new Promise((resolve) => setTimeout(resolve, 300));
           continue;
         }
         break;
@@ -457,6 +476,200 @@ DIRETRIZES DE PRECISÃO NUTRICIONAL E CÁLCULO DE CALORIAS:
     console.error("Erro na análise de refeição:", error);
     return res.status(500).json({
       error: "Não foi possível analisar a refeição no momento. " + (error?.message || ""),
+    });
+  }
+});
+
+// Helper prompt for Project Assistant
+function buildProjectAssistantPrompt(
+  projectName: string,
+  projectDescription: string,
+  notesSummary?: string,
+  tasksSummary?: string
+): string {
+  return `
+Você é o ASSISTENTE ESPECIALISTA DE PROJETOS do aplicativo Base 0.
+Você é o consultor estratégico, copiloto e parceiro de execução dedicado EXCLUSIVAMENTE ao seguinte projeto:
+
+📋 FICHA DO PROJETO:
+- NOME DO PROJETO: "${projectName || "Projeto Sem Título"}"
+- DESCRIÇÃO E ESCOPO:
+"${projectDescription || "Sem descrição fornecida ainda."}"
+${notesSummary ? `\n📝 ANOTAÇÕES E NOTAS DO PROJETO:\n${notesSummary}\n` : ""}
+${tasksSummary ? `\n✅ TAREFAS / METAS CADASTRADAS NO PROJETO:\n${tasksSummary}\n` : ""}
+
+DIRETRIZES DO ASSISTENTE DE PROJETO:
+1. FOCO NO PROJETO:
+   - Todo o seu diálogo deve considerar o contexto, objetivos, desafios e escopo descritos acima.
+   - Ajude o usuário a debater ideias, montar planos de ação, criar cronogramas, escrever textos, debugar problemas, organizar tarefas e tomar decisões assertivas.
+2. MULTIMODALIDADE (ÁUDIO E IMAGEM):
+   - Se o usuário enviou uma gravação de áudio ou imagem (mockups, rascunhos, telas, documentos), analise minuciosamente o conteúdo visual ou falado e conecte-o diretamente aos objetivos do projeto.
+3. ESTILO DE COMUNICAÇÃO:
+   - Português brasileiro claro, dinâmico, profissional e motivador.
+   - Use formatação limpa: **negrito** para termos-chave, parágrafos concisos e listas com marcadores para passos práticos.
+   - Evite enrolação; seja prático, inteligente e proponha soluções de alto impacto.
+`;
+}
+
+// Helper to map project chat messages to Gemini contents format with audio and images
+function formatProjectMessagesToContents(messages: any[]): any[] {
+  const contents: any[] = [];
+
+  for (const msg of messages) {
+    const parts: any[] = [];
+
+    // Attach Image if present
+    if (msg.imageUrl && typeof msg.imageUrl === "string") {
+      const match = msg.imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        parts.push({
+          inlineData: {
+            mimeType: match[1] || "image/jpeg",
+            data: match[2],
+          },
+        });
+      } else if (!msg.imageUrl.startsWith("http")) {
+        parts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: msg.imageUrl,
+          },
+        });
+      }
+    }
+
+    // Attach Audio if present
+    if (msg.audioUrl && typeof msg.audioUrl === "string") {
+      const match = msg.audioUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        parts.push({
+          inlineData: {
+            mimeType: match[1] || msg.audioMimeType || "audio/webm",
+            data: match[2],
+          },
+        });
+      } else if (!msg.audioUrl.startsWith("http")) {
+        parts.push({
+          inlineData: {
+            mimeType: msg.audioMimeType || "audio/webm",
+            data: msg.audioUrl,
+          },
+        });
+      }
+    }
+
+    // Text content
+    const textContent = (msg.content || "").trim();
+    if (textContent) {
+      parts.push({ text: textContent });
+    } else if (parts.length === 0) {
+      parts.push({ text: "Analise esta informação sobre o projeto." });
+    }
+
+    contents.push({
+      role: msg.role === "user" ? "user" : "model",
+      parts,
+    });
+  }
+
+  return contents;
+}
+
+// Project AI Chat Stream Endpoint
+app.post("/api/project/chat/stream", async (req, res) => {
+  try {
+    const { projectName, projectDescription, notesSummary, tasksSummary, messages } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: "Mensagens inválidas." });
+    }
+
+    const ai = getGenAI();
+    const systemPrompt = buildProjectAssistantPrompt(
+      projectName,
+      projectDescription,
+      notesSummary,
+      tasksSummary
+    );
+
+    const contents = formatProjectMessagesToContents(messages);
+
+    // Set SSE headers
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+
+    // Use resilient model fallback with Gemini 2.5 and Flash models
+    const streamResponse = await generateStreamWithModelFallback(ai, {
+      contents,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.7,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
+      },
+    }, ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3.8-flash"]);
+
+    for await (const chunk of streamResponse) {
+      const text = chunk.text;
+      if (text) {
+        res.write(`data: ${JSON.stringify({ text })}\n\n`);
+      }
+    }
+
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (error: any) {
+    console.error("Erro no stream do Assistente de Projetos:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: "Erro no streaming do Assistente de Projetos: " + (error?.message || "Tente novamente."),
+      });
+    } else {
+      res.write(`data: ${JSON.stringify({ error: error?.message || "Erro no streaming do projeto." })}\n\n`);
+      res.end();
+    }
+  }
+});
+
+// Project AI Chat Standard Endpoint (Fallback)
+app.post("/api/project/chat", async (req, res) => {
+  try {
+    const { projectName, projectDescription, notesSummary, tasksSummary, messages } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: "Mensagens inválidas." });
+    }
+
+    const ai = getGenAI();
+    const systemPrompt = buildProjectAssistantPrompt(
+      projectName,
+      projectDescription,
+      notesSummary,
+      tasksSummary
+    );
+
+    const contents = formatProjectMessagesToContents(messages);
+
+    const response = await generateWithModelFallback(ai, {
+      contents,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.7,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
+      },
+    }, ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3.8-flash"]);
+
+    const reply = response.text || "Não foi possível formular uma resposta agora para o projeto. Vamos tentar de novo!";
+    return res.json({ reply });
+  } catch (error: any) {
+    console.error("Erro no chat do Assistente de Projetos:", error);
+    return res.status(500).json({
+      error: "Erro ao comunicar com o Assistente de Projetos: " + (error?.message || "Tente novamente."),
     });
   }
 });

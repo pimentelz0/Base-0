@@ -109,43 +109,56 @@
 
 /* =========================================================================
    LIGHT THEME OVERRIDES (Guarantees zero illegibility across all components)
+   Targets both html.light and html:not(.dark) for total parity and reliability.
    ========================================================================= */
+html.light,
 html:not(.dark) {
   color-scheme: light;
 }
 
+html.light body,
 html:not(.dark) body {
   background-color: #f8fafc !important;
   color: #09090b !important;
 }
 
+html.light *,
 html:not(.dark) * {
   border-color: rgba(0, 0, 0, 0.09);
 }
 
+html.light ::-webkit-scrollbar-track,
 html:not(.dark) ::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
 
+html.light ::-webkit-scrollbar-thumb,
 html:not(.dark) ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
 }
 
+html.light ::-webkit-scrollbar-thumb:hover,
 html:not(.dark) ::-webkit-scrollbar-thumb:hover {
   background: #007AFF;
 }
 
+html.light .grid-bg-pattern,
 html:not(.dark) .grid-bg-pattern {
   background-image: 
     linear-gradient(to right, rgba(0, 0, 0, 0.035) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0, 0, 0, 0.035) 1px, transparent 1px);
 }
 
+html.light .bg-radial-ambient,
 html:not(.dark) .bg-radial-ambient {
   background-image: radial-gradient(circle at 50% -10%, rgba(0, 122, 255, 0.08), transparent 65%);
 }
 
 /* Backgrounds & Surfaces - Light Mode (Pure White Cards, Crisp Neutral Surfaces) */
+html.light .bg-black,
+html.light .bg-black\/95,
+html.light .bg-black\/90,
+html.light .bg-black\/80,
 html:not(.dark) .bg-black,
 html:not(.dark) .bg-black\/95,
 html:not(.dark) .bg-black\/90,
@@ -153,31 +166,96 @@ html:not(.dark) .bg-black\/80 {
   background-color: #f8fafc !important;
 }
 
-html:not(.dark) header.bg-black\/95 {
+/* Navigation headers in Light Mode */
+html.light header.bg-black\/95,
+html.light header.bg-zinc-950,
+html:not(.dark) header.bg-black\/95,
+html:not(.dark) header.bg-zinc-950 {
   background-color: rgba(255, 255, 255, 0.96) !important;
   border-bottom-color: #e2e8f0 !important;
 }
 
-/* ALL Cards in Light Mode: Pure White */
+/* ALL Dark Card Surfaces in Light Mode: Turn to Pure White */
+html.light .bg-zinc-950,
+html.light .bg-zinc-950\/95,
+html.light .bg-zinc-950\/90,
+html.light .bg-zinc-950\/80,
+html.light .bg-zinc-950\/70,
+html.light .bg-zinc-950\/60,
+html.light .bg-zinc-950\/50,
+html.light .bg-zinc-950\/40,
+html.light .bg-zinc-950\/30,
+html.light .bg-zinc-950\/20,
+html.light .bg-zinc-900,
+html.light .bg-zinc-900\/95,
+html.light .bg-zinc-900\/90,
+html.light .bg-zinc-900\/85,
+html.light .bg-zinc-900\/80,
+html.light .bg-zinc-900\/70,
+html.light .bg-zinc-900\/60,
+html.light .bg-zinc-900\/50,
+html.light .bg-zinc-900\/40,
+html.light .bg-zinc-900\/30,
+html.light .bg-zinc-900\/20,
+html.light .bg-neutral-900,
+html.light .bg-neutral-950,
 html:not(.dark) .bg-zinc-950,
 html:not(.dark) .bg-zinc-950\/95,
 html:not(.dark) .bg-zinc-950\/90,
 html:not(.dark) .bg-zinc-950\/80,
+html:not(.dark) .bg-zinc-950\/70,
 html:not(.dark) .bg-zinc-950\/60,
 html:not(.dark) .bg-zinc-950\/50,
+html:not(.dark) .bg-zinc-950\/40,
+html:not(.dark) .bg-zinc-950\/30,
+html:not(.dark) .bg-zinc-950\/20,
 html:not(.dark) .bg-zinc-900,
 html:not(.dark) .bg-zinc-900\/95,
 html:not(.dark) .bg-zinc-900\/90,
+html:not(.dark) .bg-zinc-900\/85,
 html:not(.dark) .bg-zinc-900\/80,
 html:not(.dark) .bg-zinc-900\/70,
 html:not(.dark) .bg-zinc-900\/60,
 html:not(.dark) .bg-zinc-900\/50,
 html:not(.dark) .bg-zinc-900\/40,
-html:not(.dark) .bg-zinc-900\/30 {
+html:not(.dark) .bg-zinc-900\/30,
+html:not(.dark) .bg-zinc-900\/20,
+html:not(.dark) .bg-neutral-900,
+html:not(.dark) .bg-neutral-950 {
   background-color: #ffffff !important;
 }
 
-/* Sub-containers & secondary subtle surfaces (like inner exercise boxes or tags) */
+/* Neutralize Dark Gradients (Turns black gradient cards into pure white) */
+html.light .from-zinc-900,
+html.light .from-zinc-950,
+html.light .from-black,
+html.light .via-zinc-950,
+html.light .via-zinc-900,
+html.light .to-black,
+html.light .to-zinc-950,
+html:not(.dark) .from-zinc-900,
+html:not(.dark) .from-zinc-950,
+html:not(.dark) .from-black,
+html:not(.dark) .via-zinc-950,
+html:not(.dark) .via-zinc-900,
+html:not(.dark) .to-black,
+html:not(.dark) .to-zinc-950 {
+  background-image: none !important;
+  background-color: #ffffff !important;
+}
+
+/* Sub-containers & secondary subtle surfaces (inner boxes, chips, secondary cards) */
+html.light .bg-zinc-850,
+html.light .bg-zinc-850\/50,
+html.light .bg-zinc-800,
+html.light .bg-zinc-800\/90,
+html.light .bg-zinc-800\/80,
+html.light .bg-zinc-800\/70,
+html.light .bg-zinc-800\/60,
+html.light .bg-zinc-800\/50,
+html.light .bg-zinc-800\/40,
+html:not(.dark) .bg-zinc-850,
+html:not(.dark) .bg-zinc-850\/50,
 html:not(.dark) .bg-zinc-800,
 html:not(.dark) .bg-zinc-800\/90,
 html:not(.dark) .bg-zinc-800\/80,
@@ -188,7 +266,33 @@ html:not(.dark) .bg-zinc-800\/40 {
   background-color: #f8fafc !important;
 }
 
+/* Progress bar tracks and meter backgrounds: Ensure they remain visible on white cards */
+html.light .rounded-full.bg-zinc-900,
+html.light .rounded-full.bg-zinc-800,
+html.light .rounded-full.bg-zinc-950,
+html:not(.dark) .rounded-full.bg-zinc-900,
+html:not(.dark) .rounded-full.bg-zinc-800,
+html:not(.dark) .rounded-full.bg-zinc-950 {
+  background-color: #e2e8f0 !important;
+}
+
+/* Empty state dashed cards in Light Mode */
+html.light .border-dashed,
+html:not(.dark) .border-dashed {
+  border-color: #cbd5e1 !important;
+  background-color: #f8fafc !important;
+}
+
 /* Note cards legacy hex background override to pure white in Light Mode */
+html.light .bg-\[\#25131e\],
+html.light .bg-\[\#0e2319\],
+html.light .bg-\[\#0e1f32\],
+html.light .bg-\[\#241e0e\],
+html.light .bg-\[\#1c132c\],
+html.light .bg-\[\#27160d\],
+html.light .bg-\[\#18181b\],
+html.light .bg-\[\#1f131a\],
+html.light .bg-\[\#1a1228\],
 html:not(.dark) .bg-\[\#25131e\],
 html:not(.dark) .bg-\[\#0e2319\],
 html:not(.dark) .bg-\[\#0e1f32\],
@@ -201,6 +305,41 @@ html:not(.dark) .bg-\[\#1a1228\] {
   background-color: #ffffff !important;
 }
 
+/* Note Cards Soft Pastel Backgrounds in Light Mode */
+html.light .bg-sky-950\/40, html:not(.dark) .bg-sky-950\/40 { background-color: #f0f9ff !important; border-color: #bae6fd !important; }
+html.light .bg-emerald-950\/40, html:not(.dark) .bg-emerald-950\/40 { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+html.light .bg-amber-950\/40, html:not(.dark) .bg-amber-950\/40 { background-color: #fffbeb !important; border-color: #fde68a !important; }
+html.light .bg-orange-950\/40, html:not(.dark) .bg-orange-950\/40 { background-color: #fff7ed !important; border-color: #fed7aa !important; }
+html.light .bg-pink-950\/40, html:not(.dark) .bg-pink-950\/40 { background-color: #fdf2f8 !important; border-color: #fbcfe8 !important; }
+html.light .bg-purple-950\/40, html:not(.dark) .bg-purple-950\/40 { background-color: #faf5ff !important; border-color: #e9d5ff !important; }
+
+html.light .text-sky-100, html:not(.dark) .text-sky-100 { color: #0369a1 !important; }
+html.light .text-emerald-100, html:not(.dark) .text-emerald-100 { color: #15803d !important; }
+html.light .text-amber-100, html:not(.dark) .text-amber-100 { color: #b45309 !important; }
+html.light .text-orange-100, html:not(.dark) .text-orange-100 { color: #c2410c !important; }
+html.light .text-pink-100, html:not(.dark) .text-pink-100 { color: #be185d !important; }
+html.light .text-purple-100, html:not(.dark) .text-purple-100 { color: #7e22ce !important; }
+
+html.light .bg-sky-900\/50, html:not(.dark) .bg-sky-900\/50 { background-color: #e0f2fe !important; }
+html.light .bg-emerald-900\/50, html:not(.dark) .bg-emerald-900\/50 { background-color: #dcfce7 !important; }
+html.light .bg-amber-900\/50, html:not(.dark) .bg-amber-900\/50 { background-color: #fef3c7 !important; }
+html.light .bg-orange-900\/50, html:not(.dark) .bg-orange-900\/50 { background-color: #ffedd5 !important; }
+html.light .bg-pink-900\/50, html:not(.dark) .bg-pink-900\/50 { background-color: #fce7f3 !important; }
+html.light .bg-purple-900\/50, html:not(.dark) .bg-purple-900\/50 { background-color: #f3e8ff !important; }
+
+html.light .text-sky-300, html:not(.dark) .text-sky-300 { color: #0284c7 !important; }
+html.light .text-emerald-300, html:not(.dark) .text-emerald-300 { color: #16a34a !important; }
+html.light .text-amber-300, html:not(.dark) .text-amber-300 { color: #d97706 !important; }
+html.light .text-orange-300, html:not(.dark) .text-orange-300 { color: #ea580c !important; }
+html.light .text-pink-300, html:not(.dark) .text-pink-300 { color: #db2777 !important; }
+html.light .text-purple-300, html:not(.dark) .text-purple-300 { color: #9333ea !important; }
+
+html.light .border-\[\#f472b6\]\/40,
+html.light .border-\[\#34d399\]\/40,
+html.light .border-\[\#38bdf8\]\/40,
+html.light .border-\[\#fbbf24\]\/40,
+html.light .border-\[\#c084fc\]\/40,
+html.light .border-\[\#fb923c\]\/40,
 html:not(.dark) .border-\[\#f472b6\]\/40,
 html:not(.dark) .border-\[\#34d399\]\/40,
 html:not(.dark) .border-\[\#38bdf8\]\/40,
@@ -210,6 +349,12 @@ html:not(.dark) .border-\[\#fb923c\]\/40 {
   border-color: #e2e8f0 !important;
 }
 
+html.light .text-\[\#fbcfe8\],
+html.light .text-\[\#a7f3d0\],
+html.light .text-\[\#bae6fd\],
+html.light .text-\[\#fef08a\],
+html.light .text-\[\#e9d5ff\],
+html.light .text-\[\#fed7aa\],
 html:not(.dark) .text-\[\#fbcfe8\],
 html:not(.dark) .text-\[\#a7f3d0\],
 html:not(.dark) .text-\[\#bae6fd\],
@@ -219,6 +364,12 @@ html:not(.dark) .text-\[\#fed7aa\] {
   color: #1e293b !important;
 }
 
+html.light .text-\[\#f472b6\],
+html.light .text-\[\#34d399\],
+html.light .text-\[\#38bdf8\],
+html.light .text-\[\#fbbf24\],
+html.light .text-\[\#c084fc\],
+html.light .text-\[\#fb923c\],
 html:not(.dark) .text-\[\#f472b6\],
 html:not(.dark) .text-\[\#34d399\],
 html:not(.dark) .text-\[\#38bdf8\],
@@ -228,10 +379,21 @@ html:not(.dark) .text-\[\#fb923c\] {
   color: #09090b !important;
 }
 
-/* Borders */
+/* Borders in Light Mode */
+html.light .border-zinc-900,
+html.light .border-zinc-900\/80,
+html.light .border-zinc-900\/60,
+html.light .border-zinc-850,
+html.light .border-zinc-800,
+html.light .border-zinc-800\/90,
+html.light .border-zinc-800\/80,
+html.light .border-zinc-800\/60,
+html.light .border-zinc-700,
+html.light .border-zinc-700\/60,
 html:not(.dark) .border-zinc-900,
 html:not(.dark) .border-zinc-900\/80,
 html:not(.dark) .border-zinc-900\/60,
+html:not(.dark) .border-zinc-850,
 html:not(.dark) .border-zinc-800,
 html:not(.dark) .border-zinc-800\/90,
 html:not(.dark) .border-zinc-800\/80,
@@ -242,61 +404,98 @@ html:not(.dark) .border-zinc-700\/60 {
 }
 
 /* High Contrast Dark Typography in Light Mode */
+html.light .text-white,
 html:not(.dark) .text-white {
   color: #09090b !important;
 }
 
+html.light .text-zinc-100,
+html.light .text-zinc-200,
+html.light .text-zinc-300,
 html:not(.dark) .text-zinc-100,
 html:not(.dark) .text-zinc-200,
 html:not(.dark) .text-zinc-300 {
   color: #0f172a !important;
 }
 
+html.light .text-zinc-400,
+html.light .text-slate-400,
 html:not(.dark) .text-zinc-400,
 html:not(.dark) .text-slate-400 {
   color: #1e293b !important;
 }
 
+html.light .text-zinc-500,
+html.light .text-slate-500,
 html:not(.dark) .text-zinc-500,
 html:not(.dark) .text-slate-500 {
   color: #334155 !important;
 }
 
+html.light .text-zinc-600,
+html.light .text-slate-600,
 html:not(.dark) .text-zinc-600,
 html:not(.dark) .text-slate-600 {
   color: #475569 !important;
 }
 
 /* Colored Accents & Highlights Contrast in Light Mode */
+html.light .text-amber-200,
+html.light .text-amber-300,
 html:not(.dark) .text-amber-200,
 html:not(.dark) .text-amber-300 {
   color: #b45309 !important;
 }
 
+html.light .text-purple-200,
+html.light .text-purple-300,
+html.light .text-purple-400,
 html:not(.dark) .text-purple-200,
 html:not(.dark) .text-purple-300,
 html:not(.dark) .text-purple-400 {
   color: #6b21a8 !important;
 }
 
+html.light .text-emerald-200,
+html.light .text-emerald-300,
 html:not(.dark) .text-emerald-200,
 html:not(.dark) .text-emerald-300 {
   color: #047857 !important;
 }
 
 /* High Contrast Solid Buttons */
+html.light button.bg-\[\#007AFF\],
+html.light div.bg-\[\#007AFF\],
 html:not(.dark) button.bg-\[\#007AFF\],
 html:not(.dark) div.bg-\[\#007AFF\] {
   color: #000000 !important;
 }
 
+html.light button.bg-blue-600,
+html.light button.bg-red-600,
+html.light button.bg-emerald-600,
 html:not(.dark) button.bg-blue-600,
 html:not(.dark) button.bg-red-600,
 html:not(.dark) button.bg-emerald-600 {
   color: #ffffff !important;
 }
 
+/* Button & interactive hover states in Light Mode */
+html.light button.bg-zinc-900:hover,
+html.light button.bg-zinc-800:hover,
+html.light .hover\:bg-zinc-800:hover,
+html.light .hover\:bg-zinc-700:hover,
+html:not(.dark) button.bg-zinc-900:hover,
+html:not(.dark) button.bg-zinc-800:hover,
+html:not(.dark) .hover\:bg-zinc-800:hover,
+html:not(.dark) .hover\:bg-zinc-700:hover {
+  background-color: #f1f5f9 !important;
+}
+
 /* Form inputs & Textareas in Light Mode */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light textarea,
+html.light select,
 html:not(.dark) input:not([type="checkbox"]):not([type="radio"]),
 html:not(.dark) textarea,
 html:not(.dark) select {
@@ -305,20 +504,49 @@ html:not(.dark) select {
   border-color: #cbd5e1 !important;
 }
 
+html.light input::placeholder,
+html.light textarea::placeholder,
 html:not(.dark) input::placeholder,
 html:not(.dark) textarea::placeholder {
   color: #64748b !important;
 }
 
 /* Modal Backdrops & Overlays in Light Mode */
+html.light .bg-black\/85,
+html.light .bg-black\/80,
+html.light .bg-black\/75,
+html.light .bg-black\/70,
+html.light .bg-black\/65,
+html.light .bg-black\/60,
 html:not(.dark) .bg-black\/85,
 html:not(.dark) .bg-black\/80,
+html:not(.dark) .bg-black\/75,
 html:not(.dark) .bg-black\/70,
+html:not(.dark) .bg-black\/65,
 html:not(.dark) .bg-black\/60 {
   background-color: rgba(15, 23, 42, 0.45) !important;
 }
 
+/* Specific sub-elements inside cards that were dark (like WorkoutTracker timers, ExportModal boxes) */
+html.light .p-2\.5.bg-black\/50,
+html.light .p-2\.5.bg-black\/60,
+html.light .p-2\.5.bg-black\/70,
+html.light .px-2\.5.bg-black\/60,
+html.light .px-2\.5.bg-black\/70,
+html:not(.dark) .p-2\.5.bg-black\/50,
+html:not(.dark) .p-2\.5.bg-black\/60,
+html:not(.dark) .p-2\.5.bg-black\/70,
+html:not(.dark) .px-2\.5.bg-black\/60,
+html:not(.dark) .px-2\.5.bg-black\/70 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
 /* Modal Card Dialog Surfaces */
+html.light .max-w-2xl.bg-zinc-950,
+html.light .max-w-lg.bg-zinc-950,
+html.light .max-w-xl.bg-zinc-950,
+html.light .max-w-sm.bg-zinc-950,
 html:not(.dark) .max-w-2xl.bg-zinc-950,
 html:not(.dark) .max-w-lg.bg-zinc-950,
 html:not(.dark) .max-w-xl.bg-zinc-950,
@@ -329,6 +557,9 @@ html:not(.dark) .max-w-sm.bg-zinc-950 {
 }
 
 /* Light Mode Soft Badges & Highlights */
+html.light .bg-emerald-950\/60,
+html.light .bg-emerald-950\/30,
+html.light .bg-emerald-950\/20,
 html:not(.dark) .bg-emerald-950\/60,
 html:not(.dark) .bg-emerald-950\/30,
 html:not(.dark) .bg-emerald-950\/20 {
@@ -337,6 +568,9 @@ html:not(.dark) .bg-emerald-950\/20 {
   color: #065f46 !important;
 }
 
+html.light .bg-rose-950\/50,
+html.light .bg-rose-950\/30,
+html.light .bg-rose-950\/20,
 html:not(.dark) .bg-rose-950\/50,
 html:not(.dark) .bg-rose-950\/30,
 html:not(.dark) .bg-rose-950\/20 {
@@ -345,38 +579,50 @@ html:not(.dark) .bg-rose-950\/20 {
 }
 
 /* Light Mode Danger Zone & Rose Alerts High-Contrast */
+html.light .bg-rose-950\/20 .text-rose-300,
+html.light .text-rose-300,
 html:not(.dark) .bg-rose-950\/20 .text-rose-300,
 html:not(.dark) .text-rose-300 {
   color: #9f1239 !important;
 }
 
+html.light .bg-rose-950\/20 .text-rose-200\/70,
+html.light .text-rose-200,
+html.light .text-rose-200\/70,
 html:not(.dark) .bg-rose-950\/20 .text-rose-200\/70,
 html:not(.dark) .text-rose-200,
 html:not(.dark) .text-rose-200\/70 {
   color: #4c0519 !important;
 }
 
+html.light .text-rose-400,
 html:not(.dark) .text-rose-400 {
   color: #be123c !important;
 }
 
+html.light .bg-rose-600\/20,
 html:not(.dark) .bg-rose-600\/20 {
   background-color: #fee2e2 !important;
   border-color: #fca5a5 !important;
   color: #991b1b !important;
 }
 
+html.light .bg-rose-600\/20:hover,
 html:not(.dark) .bg-rose-600\/20:hover {
   background-color: #e11d48 !important;
   color: #ffffff !important;
 }
 
+html.light .bg-amber-950\/30,
+html.light .bg-amber-950\/20,
 html:not(.dark) .bg-amber-950\/30,
 html:not(.dark) .bg-amber-950\/20 {
   background-color: #fffbeb !important;
   border-color: #fde68a !important;
 }
 
+html.light .bg-purple-950\/30,
+html.light .bg-purple-950\/20,
 html:not(.dark) .bg-purple-950\/30,
 html:not(.dark) .bg-purple-950\/20 {
   background-color: #faf5ff !important;
@@ -384,10 +630,17 @@ html:not(.dark) .bg-purple-950\/20 {
 }
 
 /* Markdown Prose Text in Light Mode */
+html.light .prose-invert,
 html:not(.dark) .prose-invert {
   color: #0f172a !important;
 }
 
+html.light .prose-invert p,
+html.light .prose-invert li,
+html.light .prose-invert ul,
+html.light .prose-invert ol,
+html.light .prose-invert span,
+html.light .prose-invert em,
 html:not(.dark) .prose-invert p,
 html:not(.dark) .prose-invert li,
 html:not(.dark) .prose-invert ul,
@@ -397,6 +650,10 @@ html:not(.dark) .prose-invert em {
   color: #1e293b !important;
 }
 
+html.light .prose-invert strong,
+html.light .prose-invert h1,
+html.light .prose-invert h2,
+html.light .prose-invert h3,
 html:not(.dark) .prose-invert strong,
 html:not(.dark) .prose-invert h1,
 html:not(.dark) .prose-invert h2,
@@ -404,22 +661,48 @@ html:not(.dark) .prose-invert h3 {
   color: #09090b !important;
 }
 
+/* Code and blockquote tags in chat and notes */
+html.light code,
+html:not(.dark) code {
+  background-color: #f1f5f9 !important;
+  color: #007AFF !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light pre,
+html:not(.dark) pre {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light blockquote,
+html:not(.dark) blockquote {
+  background-color: #f8fafc !important;
+  color: #334155 !important;
+}
+
 /* Bottom Navigation Bar in Light Mode */
+html.light #bottom-navigation-bar,
 html:not(.dark) #bottom-navigation-bar {
   background-color: rgba(255, 255, 255, 0.98) !important;
   border-top-color: #e2e8f0 !important;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06) !important;
 }
 
+html.light #bottom-navigation-bar button.text-white,
+html.light #bottom-navigation-bar .text-white,
 html:not(.dark) #bottom-navigation-bar button.text-white,
 html:not(.dark) #bottom-navigation-bar .text-white {
   color: #09090b !important;
 }
 
+html.light #bottom-navigation-bar .bg-zinc-800\/80,
 html:not(.dark) #bottom-navigation-bar .bg-zinc-800\/80 {
   background-color: #f1f5f9 !important;
 }
 
+html.light #bottom-navigation-bar .bg-white,
 html:not(.dark) #bottom-navigation-bar .bg-white {
   background-color: #09090b !important;
 }

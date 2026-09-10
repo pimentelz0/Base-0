@@ -1,4 +1,4 @@
-import { UserProfile, WeightLog, MealLog, ChatMessage, ChatSession, NoteItem, AuthUser, WorkoutRoutine, WorkoutSessionLog } from "../types";
+import { UserProfile, WeightLog, MealLog, ChatMessage, ChatSession, NoteItem, AuthUser, WorkoutRoutine, WorkoutSessionLog, ProjectItem } from "../types";
 
 const KEYS = {
   AUTH_USER: "base0_auth_user_v1",
@@ -14,6 +14,7 @@ const KEYS = {
   WORKOUT_LOGS: "base0_workout_logs_v1",
   ACTIVE_WORKOUT_SESSION: "base0_active_workout_session_v1",
   APP_ACCESS_DAYS: "base0_app_access_days_v1",
+  PROJECTS: "base0_projects_v1",
 };
 
 /**
@@ -184,6 +185,22 @@ export const StorageService = {
       updatedAt: profile.updatedAt || new Date().toISOString(),
     };
     safeSetItem(KEYS.PROFILE, JSON.stringify(toSave));
+
+    // Keep authUser synchronized so name and email are always up-to-date
+    try {
+      const currentRaw = localStorage.getItem(KEYS.AUTH_USER);
+      if (currentRaw) {
+        const currentAuth = JSON.parse(currentRaw);
+        if (currentAuth) {
+          const updatedAuth: AuthUser = {
+            ...currentAuth,
+            name: profile.name || currentAuth.name,
+            email: profile.email || currentAuth.email,
+          };
+          safeSetItem(KEYS.AUTH_USER, JSON.stringify(updatedAuth));
+        }
+      }
+    } catch (e) {}
   },
 
   getWeightLogs(): WeightLog[] {
@@ -341,14 +358,43 @@ export const StorageService = {
     return res;
   },
 
-  getAuthUser(): AuthUser | null {
+  getAuthUser(): AuthUser {
     try {
       const saved = localStorage.getItem(KEYS.AUTH_USER);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object" && (parsed.email || parsed.id)) {
+          return parsed;
+        }
+      }
     } catch (e) {
-      console.error(e);
+      console.error("StorageService getAuthUser error:", e);
     }
-    return null;
+
+    // Auto-create or link active session so clicking the home screen icon opens immediately without login prompt
+    let initialName = "Atleta";
+    let initialEmail = "atleta@base0.app";
+    try {
+      const profRaw = localStorage.getItem(KEYS.PROFILE);
+      if (profRaw) {
+        const parsedProf = JSON.parse(profRaw);
+        if (parsedProf?.name) initialName = parsedProf.name;
+        if (parsedProf?.email) initialEmail = parsedProf.email;
+      }
+    } catch (e) {}
+
+    const defaultUser: AuthUser = {
+      id: "usr_athlete_main",
+      email: initialEmail,
+      name: initialName,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      safeSetItem(KEYS.AUTH_USER, JSON.stringify(defaultUser));
+    } catch (e) {}
+
+    return defaultUser;
   },
 
   saveAuthUser(user: AuthUser | null): void {
@@ -522,6 +568,48 @@ export const StorageService = {
     return [];
   },
 
+  getProjects(): ProjectItem[] {
+    try {
+      const saved = localStorage.getItem(KEYS.PROJECTS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error("Error reading projects:", e);
+    }
+    return [];
+  },
+
+  saveProjects(projects: ProjectItem[]): void {
+    try {
+      safeSetItem(KEYS.PROJECTS, JSON.stringify(projects));
+    } catch (e) {
+      console.error("Error saving projects:", e);
+    }
+  },
+
+  getProjectById(id: string): ProjectItem | null {
+    const list = this.getProjects();
+    return list.find((p) => p.id === id) || null;
+  },
+
+  saveProject(project: ProjectItem): void {
+    const list = this.getProjects();
+    const idx = list.findIndex((p) => p.id === project.id);
+    if (idx >= 0) {
+      list[idx] = project;
+    } else {
+      list.unshift(project);
+    }
+    this.saveProjects(list);
+  },
+
+  deleteProject(id: string): void {
+    const list = this.getProjects().filter((p) => p.id !== id);
+    this.saveProjects(list);
+  },
+
   clearAll(): void {
     try {
       localStorage.removeItem(KEYS.PROFILE);
@@ -530,6 +618,7 @@ export const StorageService = {
       localStorage.removeItem(KEYS.CHAT_MESSAGES);
       localStorage.removeItem(KEYS.NOTES);
       localStorage.removeItem(KEYS.ACTIVE_WORKOUT_SESSION);
+      localStorage.removeItem(KEYS.PROJECTS);
       // Remove all water keys
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith(KEYS.WATER_INTAKE)) {

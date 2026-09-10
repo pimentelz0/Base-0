@@ -210,7 +210,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
     <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn pb-24">
       {/* Top Header with Greeting and Date */}
       <div className="border-b border-zinc-200 dark:border-zinc-900 pb-5">
-        <h1 className="text-2xl sm:text-3xl font-black text-white font-['Outfit'] tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white font-['Outfit'] tracking-tight">
           {greeting}
           {profile.name ? (
             <>
@@ -220,23 +220,23 @@ export const HomeTab: React.FC<HomeTabProps> = ({
             "!"
           )}
         </h1>
-        <p className="text-xs sm:text-sm text-zinc-400 font-mono mt-1">
+        <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-mono mt-1">
           {formattedDate}
         </p>
       </div>
 
       {/* Gráfico Simples de Produtividade */}
-      <div className="rounded-[22px] bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 p-5 sm:p-6 shadow-xl relative overflow-hidden">
+      <div className="rounded-[22px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 p-5 sm:p-6 shadow-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#007AFF]/10 border border-[#007AFF]/30 flex items-center justify-center text-[#007AFF]">
               <TrendingUp className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-white font-['Outfit']">
+              <h2 className="text-base sm:text-lg font-black text-zinc-900 dark:text-white font-['Outfit']">
                 Produtividade Semanal
               </h2>
-              <p className="text-xs text-zinc-400 font-mono">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">
                 Índice de consistência e foco diário
               </p>
             </div>
@@ -387,62 +387,62 @@ export const HomeTab: React.FC<HomeTabProps> = ({
       </div>
 
       {/* Motivação do Dia */}
-      <div className="rounded-[22px] bg-zinc-950 border border-amber-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
+      <div className="rounded-[22px] bg-white dark:bg-zinc-950 border border-amber-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
         <div className="mb-3">
-          <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
+          <h2 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white font-['Outfit']">
             Motivação do Dia
           </h2>
         </div>
 
-        <h3 className="text-base sm:text-lg font-bold text-amber-200 font-['Outfit'] mb-2">
+        <h3 className="text-base sm:text-lg font-bold text-amber-700 dark:text-amber-200 font-['Outfit'] mb-2">
           {dailyInsight.motivation.title}
         </h3>
-        <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
           {dailyInsight.motivation.message}
         </p>
       </div>
 
       {/* Frase de Filósofo */}
-      <div className="rounded-[22px] bg-zinc-950 border border-purple-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
+      <div className="rounded-[22px] bg-white dark:bg-zinc-950 border border-purple-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
         <div className="mb-4">
-          <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
+          <h2 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white font-['Outfit']">
             Frase de Filósofo
           </h2>
         </div>
 
-        <blockquote className="text-sm sm:text-base font-medium text-white italic leading-relaxed border-l-2 border-purple-500 pl-4 py-1">
+        <blockquote className="text-sm sm:text-base font-medium text-zinc-800 dark:text-white italic leading-relaxed border-l-2 border-purple-500 pl-4 py-1">
           "{dailyInsight.quote.text}"
         </blockquote>
 
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs font-bold text-purple-300 font-['Outfit']">
+          <span className="text-xs font-bold text-purple-700 dark:text-purple-300 font-['Outfit']">
             — {dailyInsight.quote.author}
           </span>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-zinc-900 text-xs text-zinc-400 leading-relaxed font-mono">
-          <strong className="text-purple-400 font-semibold">Reflexão Prática: </strong>
+        <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-900 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-mono">
+          <strong className="text-purple-700 dark:text-purple-400 font-semibold">Reflexão Prática: </strong>
           {dailyInsight.quote.reflection}
         </div>
       </div>
 
       {/* Dicas de Produtividade */}
-      <div className="rounded-[22px] bg-zinc-950 border border-emerald-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
+      <div className="rounded-[22px] bg-white dark:bg-zinc-950 border border-emerald-500/30 p-5 sm:p-6 shadow-xl relative overflow-hidden group">
         <div className="mb-3">
-          <h2 className="text-sm sm:text-base font-black text-white font-['Outfit']">
+          <h2 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white font-['Outfit']">
             Dica de Produtividade
           </h2>
         </div>
 
-        <h3 className="text-base sm:text-lg font-bold text-emerald-200 font-['Outfit'] mb-1.5">
+        <h3 className="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-200 font-['Outfit'] mb-1.5">
           {dailyInsight.productivityTip.technique}
         </h3>
-        <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed mb-3">
+        <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed mb-3">
           {dailyInsight.productivityTip.description}
         </p>
 
-        <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-900/40 text-xs text-emerald-300 font-mono">
-          <strong className="text-emerald-400">Ação de Hoje: </strong>
+        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-800 dark:text-emerald-300 font-mono">
+          <strong className="text-emerald-700 dark:text-emerald-400">Ação de Hoje: </strong>
           {dailyInsight.productivityTip.actionStep}
         </div>
       </div>

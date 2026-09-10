@@ -1,6 +1,6 @@
 {
   "name": "Base 0",
-  "description": "Base de operações pessoal integrando módulo GYM (tracking de peso, TMB/IMC, refeições, água e Gulinha IA) e módulo de Notas & Post-its organizados por meses.",
-  "requestFramePermissions": ["camera"],
+  "description": "Base de operações pessoal integrando módulo GYM, gerenciamento de Projetos com assistente IA multimodal (áudio e imagem) e módulo de Notas.",
+  "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

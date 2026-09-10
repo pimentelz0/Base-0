@@ -119,9 +119,9 @@ export const GymTab: React.FC<GymTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Subnav Centered */}
-      <div className="flex items-center justify-center w-full border-b border-zinc-900/80 pb-3">
+      <div className="flex items-center justify-center w-full border-b border-zinc-200 dark:border-zinc-900/80 pb-3">
         <div className="w-full overflow-x-auto pb-1 scrollbar-none flex items-center justify-center">
-          <nav className="inline-flex items-center mx-auto gap-1 p-1 rounded-2xl bg-zinc-950/90 border border-zinc-800/80 backdrop-blur-md shadow-sm">
+          <nav className="inline-flex items-center mx-auto gap-1 p-1 rounded-2xl bg-white/90 dark:bg-zinc-950/90 border border-zinc-200 dark:border-zinc-800/80 backdrop-blur-md shadow-sm">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeGymSection === item.id;
@@ -135,7 +135,7 @@ export const GymTab: React.FC<GymTabProps> = ({
                   className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs transition-all whitespace-nowrap cursor-pointer ${
                     isActive
                       ? "bg-[#007AFF] text-black font-black shadow-md shadow-[#007AFF]/25"
-                      : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/60 font-semibold"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900/60 font-semibold"
                   }`}
                 >
                   {item.id === "gulinha" ? (

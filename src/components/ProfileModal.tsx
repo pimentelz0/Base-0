@@ -14,14 +14,7 @@ import {
 } from "lucide-react";
 import {
   UserProfile,
-  ActivityLevel,
-  FitnessGoal,
 } from "../types";
-import {
-  calculateMetrics,
-  ACTIVITY_LABELS,
-  GOAL_LABELS,
-} from "../utils/calculations";
 import { compressImage } from "../utils/imageCompressor";
 
 interface ProfileModalProps {
@@ -72,8 +65,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   }, [profile, isOpen]);
 
   if (!isOpen) return null;
-
-  const liveMetrics = calculateMetrics(formData);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,9 +166,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fadeIn">
-      <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl my-8 overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl my-8 overflow-hidden">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-900 bg-zinc-950">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#007AFF] text-black font-black flex items-center justify-center overflow-hidden shadow-sm">
               {formData.avatarUrl ? (
@@ -195,11 +186,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               )}
             </div>
             <div>
-              <h2 className="text-xl font-black text-white font-['Outfit']">
+              <h2 className="text-xl font-black text-zinc-900 dark:text-white font-['Outfit']">
                 {isFirstSetup ? "Avaliação Inicial" : "Conta & Perfil"}
               </h2>
               <p className="text-xs text-zinc-500 font-mono">
-                {formData.name || "Atleta"} • {formData.currentWeight}kg
+                {formData.name || "Perfil do Usuário"}
               </p>
             </div>
           </div>
@@ -208,7 +199,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             <button
               id="close-profile-modal-btn"
               onClick={onClose}
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-900 transition-colors"
+              className="p-2 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -216,14 +207,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-zinc-900 px-6 pt-2 gap-2 bg-zinc-950 overflow-x-auto">
+        <div className="flex border-b border-zinc-200 dark:border-zinc-900 px-6 pt-2 gap-2 bg-white dark:bg-zinc-950 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveSection("profile")}
-            className={`pb-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
+            className={`pb-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors cursor-pointer ${
               activeSection === "profile"
                 ? "border-[#007AFF] text-[#007AFF]"
-                : "border-transparent text-zinc-400 hover:text-white"
+                : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
             }`}
           >
             Perfil & Foto
@@ -233,10 +224,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveSection("security")}
-                className={`pb-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
+                className={`pb-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors cursor-pointer ${
                   activeSection === "security"
                     ? "border-[#007AFF] text-[#007AFF]"
-                    : "border-transparent text-zinc-400 hover:text-white"
+                    : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                 }`}
               >
                 Alterar Senha
@@ -244,10 +235,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveSection("account")}
-                className={`pb-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
+                className={`pb-3 px-3 text-xs font-bold whitespace-nowrap border-b-2 transition-colors cursor-pointer ${
                   activeSection === "account"
                     ? "border-[#007AFF] text-[#007AFF]"
-                    : "border-transparent text-zinc-400 hover:text-white"
+                    : "border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                 }`}
               >
                 Conta & Ações
@@ -258,9 +249,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
         {/* Section 1: Perfil & Foto */}
         {activeSection === "profile" && (
-          <form onSubmit={handleSave} className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+          <form onSubmit={handleSave} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
             {/* Foto da Galeria */}
-            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-col sm:flex-row items-center sm:items-start gap-4">
+            <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center sm:items-start gap-4">
               <div className="relative group shrink-0">
                 <div className="w-20 h-20 rounded-2xl bg-[#007AFF] text-black font-black flex items-center justify-center overflow-hidden shadow-md">
                   {formData.avatarUrl ? (
@@ -281,7 +272,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-2xl flex flex-col items-center justify-center text-white text-[10px] font-bold transition-opacity gap-1"
+                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 rounded-2xl flex flex-col items-center justify-center text-white text-[10px] font-bold transition-opacity gap-1 cursor-pointer"
                 >
                   <Camera className="w-4 h-4" />
                   <span>Trocar</span>
@@ -289,11 +280,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
 
               <div className="flex-1 text-center sm:text-left space-y-2">
-                <div className="text-xs font-bold text-white">
+                <div className="text-sm font-bold text-zinc-900 dark:text-white font-['Outfit']">
                   Foto de Perfil
                 </div>
-                <p className="text-xs text-zinc-400">
-                  Carregue uma imagem diretamente da sua galeria para personalizar o avatar.
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  Carregue uma imagem diretamente da sua galeria ou câmera para personalizar seu avatar no app.
                 </p>
 
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
@@ -307,7 +298,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-800 hover:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-xs font-bold transition-colors cursor-pointer"
                   >
                     <Upload className="w-3.5 h-3.5 text-[#007AFF]" />
                     <span>Escolher da Galeria</span>
@@ -317,238 +308,43 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-red-900/50 text-zinc-400 hover:text-red-400 text-xs font-bold transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-red-500/40 text-zinc-600 dark:text-zinc-400 hover:text-red-500 text-xs font-bold transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Remover</span>
+                      <span>Remover Foto</span>
                     </button>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Dados Principais */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Nome / Apelido
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none transition-colors"
-                    placeholder="Ex: Carlos"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Sexo Biológico (Cálculo TMB)
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData({ ...formData, gender: "male" })
-                      }
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                        formData.gender === "male"
-                          ? "bg-[#007AFF]/20 border-[#007AFF] text-[#007AFF]"
-                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
-                      }`}
-                    >
-                      Masculino
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData({ ...formData, gender: "female" })
-                      }
-                      className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                        formData.gender === "female"
-                          ? "bg-[#007AFF]/20 border-[#007AFF] text-[#007AFF]"
-                          : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800"
-                      }`}
-                    >
-                      Feminino
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Altura (cm)
-                  </label>
-                  <input
-                    type="number"
-                    min="100"
-                    max="250"
-                    required
-                    value={formData.height || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        height: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                    placeholder="175"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Peso Atual (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="30"
-                    max="300"
-                    required
-                    value={formData.currentWeight || ""}
-                    onChange={(e) => {
-                      const w = parseFloat(e.target.value) || 0;
-                      setFormData({
-                        ...formData,
-                        currentWeight: w,
-                        startWeight: formData.startWeight || w,
-                      });
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                    placeholder="75.0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Idade (anos)
-                  </label>
-                  <input
-                    type="number"
-                    min="12"
-                    max="100"
-                    required
-                    value={formData.age || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        age: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                    placeholder="25"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Meta de Peso (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.targetWeight || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        targetWeight: e.target.value
-                          ? parseFloat(e.target.value)
-                          : undefined,
-                      })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono"
-                    placeholder="Ex: 80.0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Nível de Atividade
-                  </label>
-                  <select
-                    value={formData.activityLevel}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        activityLevel: e.target.value as ActivityLevel,
-                      })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none"
-                  >
-                    {Object.entries(ACTIVITY_LABELS).map(([key, info]) => (
-                      <option key={key} value={key}>
-                        {info.label} ({info.desc})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-2">
-                  Objetivo Principal
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {Object.entries(GOAL_LABELS).map(([key, info]) => {
-                    const isSelected = formData.goal === key;
-                    return (
-                      <label
-                        key={key}
-                        onClick={() =>
-                          setFormData({
-                            ...formData,
-                            goal: key as FitnessGoal,
-                          })
-                        }
-                        className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
-                          isSelected
-                            ? "bg-[#007AFF]/10 border-[#007AFF] text-white"
-                            : "bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                        }`}
-                      >
-                        <div
-                          className={`w-4 h-4 mt-0.5 rounded-full border flex items-center justify-center ${
-                            isSelected
-                              ? "border-[#007AFF] bg-[#007AFF] text-black"
-                              : "border-zinc-600 bg-zinc-800"
-                          }`}
-                        >
-                          {isSelected && (
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-white">
-                            {info.label}
-                          </div>
-                          <div className="text-[11px] text-zinc-400">
-                            {info.desc}
-                          </div>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+            {/* Nome / Apelido */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+                Nome de Exibição <span className="text-[#007AFF]">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                className="w-full px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-sm focus:border-[#007AFF] outline-none transition-colors"
+                placeholder="Ex: Carlos Amorim"
+              />
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                Este nome será exibido nas saudações da tela inicial, cabeçalho e interações no app. Dados de peso, altura e metas são gerenciados diretamente na aba Gym.
+              </p>
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-4 border-t border-zinc-900 flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-900 flex items-center justify-end gap-3">
               {!isFirstSetup && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition-colors"
+                  className="px-5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -578,12 +374,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* Section 2: Alterar Senha */}
         {activeSection === "security" && (
           <form onSubmit={handlePasswordChange} className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
-            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-1">
-              <div className="flex items-center gap-2 text-white text-xs font-bold">
+            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-1">
+              <div className="flex items-center gap-2 text-zinc-900 dark:text-white text-xs font-bold">
                 <KeyRound className="w-4 h-4 text-[#007AFF]" />
                 <span>Segurança e Autenticação</span>
               </div>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
                 Defina ou atualize a sua senha de acesso para proteger seus dados e histórico.
               </p>
             </div>
@@ -607,7 +403,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
                   Senha Atual
                 </label>
                 <input
@@ -615,13 +411,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-sm focus:border-[#007AFF] outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
                     Nova Senha
                   </label>
                   <input
@@ -630,12 +426,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Mínimo 6 dígitos"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-sm focus:border-[#007AFF] outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1.5">
                     Confirmar Nova Senha
                   </label>
                   <input
@@ -644,23 +440,23 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repita a nova senha"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white text-sm focus:border-[#007AFF] outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-zinc-900 flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-900 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold transition-colors cursor-pointer"
               >
                 Fechar
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-[#007AFF] hover:bg-[#006fe6] text-black text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer"
               >
                 <Lock className="w-4 h-4" />
                 <span>Atualizar Senha</span>
@@ -680,13 +476,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             )}
 
             {/* Sair do App */}
-            <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="text-sm font-bold text-white flex items-center gap-2">
-                  <LogOut className="w-4 h-4 text-zinc-400" />
+                <div className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                  <LogOut className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
                   <span>Sair do Aplicativo</span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-1">
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
                   Encerra sua sessão local e retorna à tela inicial de login.
                 </p>
               </div>
@@ -694,7 +490,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="button"
                 onClick={handleExecuteLogout}
-                className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-bold transition-colors self-start sm:self-auto shrink-0"
+                className="px-4 py-2.5 rounded-xl bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white text-xs font-bold transition-colors self-start sm:self-auto shrink-0 cursor-pointer"
               >
                 Sair do App
               </button>

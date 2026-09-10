@@ -23,6 +23,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const handleQuickDirectEntry = () => {
+    const displayName = "Atleta";
+    const authUser: AuthUser = {
+      id: `usr_${Date.now()}`,
+      email: "atleta@base0.app",
+      name: displayName,
+      createdAt: new Date().toISOString(),
+    };
+    onLogin(authUser, displayName);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -206,6 +217,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   <ArrowRight className="w-4 h-4 stroke-[3]" />
                 </>
               )}
+            </button>
+
+            {/* Quick 1-Tap Entry for Instant Access */}
+            <button
+              type="button"
+              id="quick-direct-entry-btn"
+              onClick={handleQuickDirectEntry}
+              className="w-full py-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 hover:border-zinc-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Entrar Direto (Acesso Imediato)</span>
             </button>
           </form>
 

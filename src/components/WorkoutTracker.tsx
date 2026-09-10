@@ -548,7 +548,7 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ profile }) => {
               <span className="text-[10px] font-mono font-bold text-[#007AFF] uppercase tracking-wider block">
                 Em Andamento
               </span>
-              <h3 className="text-sm font-bold text-white font-['Outfit']">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white font-['Outfit']">
                 {currentRoutine.name}
               </h3>
             </div>
@@ -556,7 +556,7 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ profile }) => {
 
           <div className="flex items-center gap-3">
             {restTimerSeconds !== null && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 border border-[#007AFF]/40">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-black/60 border border-[#007AFF]/40 shadow-sm">
                 <Timer className="w-3.5 h-3.5 text-[#007AFF] animate-spin" />
                 <span className="text-xs font-mono font-bold text-[#007AFF]">
                   {restTimerSeconds}s
@@ -564,16 +564,16 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ profile }) => {
                 <button
                   type="button"
                   onClick={() => setRestTimerSeconds(null)}
-                  className="text-zinc-500 hover:text-white text-xs ml-1"
+                  className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-xs ml-1"
                 >
                   ✕
                 </button>
               </div>
             )}
 
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/70 border border-zinc-800">
-              <Clock className="w-3.5 h-3.5 text-zinc-400" />
-              <span className="text-sm font-mono font-bold text-white tracking-wider">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-black/70 border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <Clock className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+              <span className="text-sm font-mono font-bold text-zinc-900 dark:text-white tracking-wider">
                 {formatTime(sessionSeconds)}
               </span>
             </div>
@@ -583,11 +583,11 @@ export const WorkoutTracker: React.FC<WorkoutTrackerProps> = ({ profile }) => {
 
       {/* Estado Vazio: Sem Fichas */}
       {routines.length === 0 ? (
-        <div className="py-14 text-center flex flex-col items-center justify-center space-y-3 rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/50 p-6">
-          <Dumbbell className="w-8 h-8 text-zinc-600 stroke-[1.5]" />
+        <div className="py-14 text-center flex flex-col items-center justify-center space-y-3 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950/50 p-6">
+          <Dumbbell className="w-8 h-8 text-zinc-400 dark:text-zinc-600 stroke-[1.5]" />
           <div>
-            <h3 className="text-sm font-bold text-white">Nenhum treino criado</h3>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Nenhum treino criado</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Crie sua primeira ficha para adicionar seus exercícios.
             </p>
           </div>

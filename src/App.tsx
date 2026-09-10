@@ -6,6 +6,7 @@ import { Navbar } from "./components/Navbar";
 import { HomeTab } from "./components/HomeTab";
 import { GymTab, GymSectionType } from "./components/GymTab";
 import { NotesTab } from "./components/NotesTab";
+import { ProjectsTab } from "./components/projects/ProjectsTab";
 import { ProfileTab } from "./components/ProfileTab";
 import { ProfileModal } from "./components/ProfileModal";
 import { BottomNav } from "./components/BottomNav";
@@ -63,6 +64,19 @@ export default function App() {
       return next;
     });
   };
+
+  // Keep DOM class synchronized with theme state on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (theme === "light") {
+        document.documentElement.classList.add("light");
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+      }
+    }
+  }, [theme]);
 
   // Current active session and its messages
   const activeSession = useMemo(() => {
@@ -819,6 +833,8 @@ export default function App() {
             }}
             onUpdateProfile={handleUpdateProfile}
           />
+        ) : activeTab === "projects" ? (
+          <ProjectsTab />
         ) : activeTab === "notes" ? (
           <NotesTab
             notes={notes}
