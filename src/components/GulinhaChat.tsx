@@ -474,7 +474,7 @@ export const GulinhaChat: React.FC<GulinhaChatProps> = ({
                   ) : !msg.content && msg.isStreaming ? (
                     <div className="flex items-center gap-2 text-xs text-zinc-300 py-1 font-medium animate-pulse">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-[#007AFF]" />
-                      <span>Gulinha analisando seus dados e digitando...</span>
+                      <span>Digitando...</span>
                     </div>
                   ) : (
                     <div className="prose prose-invert max-w-none text-[13px] leading-relaxed break-words font-normal">
@@ -554,12 +554,12 @@ export const GulinhaChat: React.FC<GulinhaChatProps> = ({
                     </div>
                   )}
 
-                  {msg.isStreaming ? (
+                  {msg.isStreaming && msg.content ? (
                     <div className="flex items-center gap-1 text-[#007AFF] font-mono text-[10px] font-bold animate-pulse mt-1.5 justify-end">
                       <Sparkles className="w-3 h-3" />
                       <span>Digitando...</span>
                     </div>
-                  ) : (
+                  ) : !msg.isStreaming ? (
                     <div
                       className={`text-[9px] font-mono mt-1.5 flex items-center justify-end ${
                         isUser ? "text-black/60" : "text-zinc-500"
@@ -570,7 +570,7 @@ export const GulinhaChat: React.FC<GulinhaChatProps> = ({
                         minute: "2-digit",
                       })}
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {isUser && (
@@ -589,7 +589,7 @@ export const GulinhaChat: React.FC<GulinhaChatProps> = ({
             <GulinhaAvatar size="sm" isThinking />
             <div className="bg-zinc-900 border border-zinc-800/90 rounded-2xl rounded-tl-xs px-4 py-3 flex items-center gap-2 text-zinc-400 text-xs shadow-md">
               <Loader2 className="w-4 h-4 animate-spin text-[#007AFF]" />
-              <span>Gulinha pensando com base no seu app...</span>
+              <span>Digitando...</span>
             </div>
           </div>
         )}

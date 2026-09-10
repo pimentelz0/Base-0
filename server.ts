@@ -39,11 +39,10 @@ function getGenAI() {
 async function generateWithModelFallback(ai: GoogleGenAI, params: any, customModels?: string[]) {
   // Official valid models according to @google/genai guidelines, ordered for lowest latency & fastest response
   const candidateModels = customModels && customModels.length > 0 ? customModels : [
-    "gemini-2.5-flash",
-    "gemini-flash-latest",
+    "gemini-3.6-flash",
     "gemini-3.1-flash-lite",
-    "gemini-2.5-flash-lite",
     "gemini-3.8-flash",
+    "gemini-flash-latest",
   ];
   let lastErr: any;
 
@@ -78,6 +77,15 @@ async function generateWithModelFallback(ai: GoogleGenAI, params: any, customMod
           break;
         }
 
+        const isNotFoundOrDeprecated =
+          errStr.includes("not_found") ||
+          errStr.includes("404") ||
+          errStr.includes("no longer available");
+
+        if (isNotFoundOrDeprecated) {
+          break;
+        }
+
         const isTemporary =
           errStr.includes("503") ||
           errStr.includes("high demand") ||
@@ -96,11 +104,10 @@ async function generateWithModelFallback(ai: GoogleGenAI, params: any, customMod
 
 async function generateStreamWithModelFallback(ai: GoogleGenAI, params: any, customModels?: string[]) {
   const candidateModels = customModels && customModels.length > 0 ? customModels : [
-    "gemini-2.5-flash",
-    "gemini-flash-latest",
+    "gemini-3.6-flash",
     "gemini-3.1-flash-lite",
-    "gemini-2.5-flash-lite",
     "gemini-3.8-flash",
+    "gemini-flash-latest",
   ];
   let lastErr: any;
 
@@ -131,6 +138,15 @@ async function generateStreamWithModelFallback(ai: GoogleGenAI, params: any, cus
         );
 
         if (isQuotaExhausted) {
+          break;
+        }
+
+        const isNotFoundOrDeprecated =
+          errStr.includes("not_found") ||
+          errStr.includes("404") ||
+          errStr.includes("no longer available");
+
+        if (isNotFoundOrDeprecated) {
           break;
         }
 
@@ -218,7 +234,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Chat stream endpoint with Gulinha AI (Real-time typed-out response)
-app.post("/api/gulinha/chat/stream", async (req, res) => {
+app.post(["/api/gulinha/chat/stream", "/api/gulinha/stream"], async (req, res) => {
   try {
     const { messages, userContext } = req.body;
 
@@ -248,9 +264,6 @@ app.post("/api/gulinha/chat/stream", async (req, res) => {
       config: {
         systemInstruction: contextPrompt,
         temperature: 0.7,
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.LOW,
-        },
       },
     });
 
@@ -302,9 +315,6 @@ app.post("/api/gulinha/chat", async (req, res) => {
       config: {
         systemInstruction: contextPrompt,
         temperature: 0.7,
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.LOW,
-        },
       },
     });
 
@@ -576,7 +586,7 @@ function formatProjectMessagesToContents(messages: any[]): any[] {
 }
 
 // Project AI Chat Stream Endpoint
-app.post("/api/project/chat/stream", async (req, res) => {
+app.post(["/api/project/chat/stream", "/api/project/stream"], async (req, res) => {
   try {
     const { projectName, projectDescription, notesSummary, tasksSummary, messages } = req.body;
 
@@ -600,17 +610,14 @@ app.post("/api/project/chat/stream", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders?.();
 
-    // Use resilient model fallback with Gemini 2.5 and Flash models
+    // Use resilient model fallback with Gemini 3 models
     const streamResponse = await generateStreamWithModelFallback(ai, {
       contents,
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.LOW,
-        },
       },
-    }, ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3.8-flash"]);
+    }, ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"]);
 
     for await (const chunk of streamResponse) {
       const text = chunk.text;
@@ -658,11 +665,8 @@ app.post("/api/project/chat", async (req, res) => {
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.LOW,
-        },
       },
-    }, ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3.8-flash"]);
+    }, ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"]);
 
     const reply = response.text || "Não foi possível formular uma resposta agora para o projeto. Vamos tentar de novo!";
     return res.json({ reply });

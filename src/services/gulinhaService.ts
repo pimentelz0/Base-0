@@ -85,6 +85,7 @@ function getClientApiKey(): string | null {
 }
 
 const CANDIDATE_MODELS = [
+  "gemini-3.6-flash",
   "gemini-3.1-flash-lite",
   "gemini-3.8-flash",
   "gemini-flash-latest",
@@ -236,13 +237,14 @@ export const GulinhaService = {
     // 2. Fallback: call standard chat, then typewriter stream it smoothly
     const fullReply = await this.chat(messages, userContext);
     
-    // Smooth simulated typewriter for fallback so the user always experiences the typing effect!
+    // Smooth, fast simulated typewriter for fallback
     const words = fullReply.split(/(\s+)/);
     let simulatedAccumulated = "";
-    for (const word of words) {
-      simulatedAccumulated += word;
-      onChunk(word, simulatedAccumulated);
-      await new Promise((resolve) => setTimeout(resolve, 16));
+    for (let i = 0; i < words.length; i += 2) {
+      const chunk = words.slice(i, i + 2).join("");
+      simulatedAccumulated += chunk;
+      onChunk(chunk, simulatedAccumulated);
+      await new Promise((resolve) => setTimeout(resolve, 8));
     }
 
     return fullReply;
@@ -297,14 +299,6 @@ export const GulinhaService = {
 
     for (const model of CANDIDATE_MODELS) {
       const modelRequestBody: any = { ...requestBody };
-      if (model.startsWith("gemini-3")) {
-        modelRequestBody.generationConfig = {
-          ...modelRequestBody.generationConfig,
-          thinkingConfig: {
-            thinkingLevel: "LOW",
-          },
-        };
-      }
 
       for (let attempt = 0; attempt < 2; attempt++) {
         try {

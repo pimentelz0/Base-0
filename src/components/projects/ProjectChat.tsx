@@ -549,8 +549,13 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
                     </div>
                   )}
 
-                  {/* Message Text Content */}
-                  {msg.content && (
+                  {/* Message Text Content or Digitando */}
+                  {!msg.content && msg.isStreaming ? (
+                    <div className="flex items-center gap-2 text-xs text-zinc-400 py-1 font-medium animate-pulse">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#007AFF]" />
+                      <span>Digitando...</span>
+                    </div>
+                  ) : msg.content ? (
                     <div
                       className={`text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                         isUser ? "font-medium" : "text-zinc-200"
@@ -558,7 +563,7 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
                     >
                       {msg.content}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Footer info: time + copy button */}
                   <div
@@ -592,11 +597,11 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
           })
         )}
 
-        {/* Loading / Typing indicator */}
-        {isLoading && (
+        {/* Loading / Typing indicator if not already inside a message bubble */}
+        {isLoading && !messages.some((m) => m.role === "model" && m.isStreaming) && (
           <div className="flex items-center gap-2 text-xs text-zinc-400 pl-11">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[#007AFF]" />
-            <span>Assistente do projeto pensando...</span>
+            <span>Digitando...</span>
           </div>
         )}
 

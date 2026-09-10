@@ -186,6 +186,7 @@ export interface ProjectChatMessage {
   timestamp: string;
   imageUrl?: string;
   audioUrl?: string;
+  audioMimeType?: string;
   audioDurationSeconds?: number;
   isStreaming?: boolean;
 }

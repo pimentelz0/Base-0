@@ -47,6 +47,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/gulinha/chat/stream",
+      "destination": "/api/gulinha/stream"
+    },
+    {
+      "source": "/api/project/chat/stream",
+      "destination": "/api/project/stream"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
