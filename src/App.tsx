@@ -16,10 +16,12 @@ import { SupabaseModal } from "./components/SupabaseModal";
 import { GulinhaChat } from "./components/GulinhaChat";
 import { LoginScreen } from "./components/LoginScreen";
 import { SupabaseService } from "./lib/supabase";
+import { DeepRecoveryService } from "./utils/deepRecovery";
 import { GulinhaService, UserFitnessContext } from "./services/gulinhaService";
 
 export default function App() {
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => StorageService.getAuthUser());
+  const [authUser, setAuthUser] = useState<AuthUser>(() => StorageService.getAuthUser());
+  const [isLoggedOutByUser, setIsLoggedOutByUser] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => StorageService.getWeightLogs());
   const [mealLogs, setMealLogs] = useState<MealLog[]>(() => StorageService.getMealLogs());
@@ -131,20 +133,82 @@ export default function App() {
   };
 
 
+  // Initialize IndexedDB persistence and auto-recover any evicted data in background
+  useEffect(() => {
+    async function autoHealAndSync() {
+      try {
+        await StorageService.initPersistence();
+
+        let p = StorageService.getProfile();
+        let w = StorageService.getWeightLogs();
+        let m = StorageService.getMealLogs();
+        let n = StorageService.getNotes();
+
+        // If local state is missing data or unconfigured, scan all storage layers automatically!
+        const needsDeepRecovery =
+          (!p.isConfigured || !p.name || p.name === "Atleta Base 0" || p.currentWeight === 0) &&
+          w.length === 0;
+
+        if (needsDeepRecovery) {
+          const recovered = await DeepRecoveryService.scanForLostData();
+          if (
+            recovered.profile?.isConfigured ||
+            recovered.weightLogs.length > 0 ||
+            recovered.mealLogs.length > 0 ||
+            recovered.notes.length > 0
+          ) {
+            await DeepRecoveryService.applyRecoveredData(recovered);
+            p = StorageService.getProfile();
+            w = StorageService.getWeightLogs();
+            m = StorageService.getMealLogs();
+            n = StorageService.getNotes();
+          }
+        }
+
+        if (p?.isConfigured && (!profile?.isConfigured || profile.currentWeight === 0)) {
+          setProfile(p);
+        }
+        if (w.length > 0 && weightLogs.length === 0) {
+          setWeightLogs(w);
+        }
+        if (m.length > 0 && mealLogs.length === 0) {
+          setMealLogs(m);
+        }
+        if (n.length > 0 && notes.length === 0) {
+          setNotes(n);
+        }
+        const u = StorageService.getAuthUser();
+        if (u) {
+          setAuthUser(u);
+        }
+      } catch (err) {
+        console.warn("Storage auto-healing warning:", err);
+      }
+    }
+
+    autoHealAndSync();
+  }, []);
+
   // Initial cloud sync from Supabase with timestamp-based conflict resolution
   useEffect(() => {
     async function loadCloudData() {
       try {
         const remote = await SupabaseService.fetchAllData();
         
-        // 1. Profile: timestamp conflict resolution (never let old cloud data overwrite newer local edits)
+        // 1. Profile: timestamp conflict resolution (never let empty cloud data overwrite local data)
         if (remote.profile) {
           const localProfile = StorageService.getProfile();
           const remoteTime = new Date(remote.profile.updatedAt || 0).getTime();
           const localTime = new Date(localProfile.updatedAt || 0).getTime();
 
-          // Only accept remote if remote is strictly newer than local
-          if (remoteTime > localTime) {
+          const isRemoteConfigured =
+            Boolean(remote.profile.isConfigured) &&
+            Boolean(remote.profile.name) &&
+            remote.profile.name !== "Atleta Base 0" &&
+            (remote.profile.currentWeight || 0) > 0;
+
+          // Only accept remote if remote is strictly newer than local AND properly configured
+          if (remoteTime > localTime && isRemoteConfigured) {
             const mergedProfile: UserProfile = {
               ...localProfile,
               ...remote.profile,
@@ -156,7 +220,7 @@ export default function App() {
             };
             setProfile(mergedProfile);
             StorageService.saveProfile(mergedProfile);
-          } else if (localTime > remoteTime) {
+          } else if (localTime > remoteTime && localProfile.isConfigured) {
             // Local has newer edits! Push local to Supabase so cloud catches up
             SupabaseService.syncProfile(localProfile).catch(console.warn);
           }
@@ -708,22 +772,28 @@ export default function App() {
   const handleLogin = (user: AuthUser, initialName?: string) => {
     setAuthUser(user);
     StorageService.saveAuthUser(user);
+    setIsLoggedOutByUser(false);
 
-    if (initialName) {
-      const updated: UserProfile = {
-        ...profile,
-        name: initialName,
-        email: user.email,
-        updatedAt: new Date().toISOString(),
-      };
-      setProfile(updated);
-      StorageService.saveProfile(updated);
-      SupabaseService.syncProfile(updated).catch(console.warn);
+    // Only update profile name if not already configured and initialName is not a generic default
+    if (initialName && initialName !== "Atleta") {
+      const currentName = profile.name?.trim();
+      const isPlaceholder = !currentName || currentName === "Atleta Base 0" || currentName === "Atleta";
+      if (isPlaceholder) {
+        const updated: UserProfile = {
+          ...profile,
+          name: initialName,
+          email: user.email || profile.email,
+          updatedAt: new Date().toISOString(),
+        };
+        setProfile(updated);
+        StorageService.saveProfile(updated);
+        SupabaseService.syncProfile(updated).catch(console.warn);
+      }
     }
   };
 
   const handleLogout = () => {
-    setAuthUser(null);
+    setIsLoggedOutByUser(true);
     StorageService.clearAuthUser();
     setActiveTab("home");
   };
@@ -731,7 +801,6 @@ export default function App() {
   const handleDeleteAccount = () => {
     StorageService.clearAll();
     StorageService.clearAuthUser();
-    setAuthUser(null);
     setProfile(DEFAULT_PROFILE);
     setWeightLogs([]);
     setMealLogs([]);
@@ -755,10 +824,11 @@ export default function App() {
     setActiveChatSessionId(fresh.id);
     StorageService.saveChatSessions([fresh]);
     StorageService.saveActiveChatSessionId(fresh.id);
+    setIsLoggedOutByUser(true);
     setActiveTab("home");
   };
 
-  if (!authUser) {
+  if (isLoggedOutByUser) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 

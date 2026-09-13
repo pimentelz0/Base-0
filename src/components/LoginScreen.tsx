@@ -8,6 +8,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { AuthUser } from "../types";
+import { StorageService } from "../utils/storage";
 
 interface LoginScreenProps {
   onLogin: (user: AuthUser, initialName?: string) => void;
@@ -24,14 +25,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
 
   const handleQuickDirectEntry = () => {
-    const displayName = "Atleta";
+    const existingProf = StorageService.getProfile();
+    const displayName = existingProf?.name && existingProf.name.trim() && existingProf.name !== "Atleta Base 0" ? existingProf.name : "Atleta";
+    const userEmail = existingProf?.email && existingProf.email.trim() ? existingProf.email : "atleta@base0.app";
     const authUser: AuthUser = {
       id: `usr_${Date.now()}`,
-      email: "atleta@base0.app",
+      email: userEmail,
       name: displayName,
       createdAt: new Date().toISOString(),
     };
-    onLogin(authUser, displayName);
+    onLogin(authUser);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

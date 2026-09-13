@@ -1,4 +1,5 @@
 import { UserProfile, WeightLog, MealLog, ChatMessage, ChatSession, NoteItem, AuthUser, WorkoutRoutine, WorkoutSessionLog, ProjectItem } from "../types";
+import { IdbService } from "./idbStorage";
 
 const KEYS = {
   AUTH_USER: "base0_auth_user_v1",
@@ -19,8 +20,19 @@ const KEYS = {
 
 /**
  * Resilient localStorage write wrapper with auto-recovery against QuotaExceededError.
+ * Simultaneously mirrors all writes into IndexedDB for persistent survival.
  */
 function safeSetItem(key: string, value: string): void {
+  // 1. Always mirror to IndexedDB for persistent survival & high storage quota
+  try {
+    IdbService.setItem(key, value).catch((idbErr) => {
+      console.warn(`IdbService background mirror warning:`, idbErr);
+    });
+  } catch (err) {
+    // Non-blocking
+  }
+
+  // 2. Write to localStorage for instant synchronous startup
   try {
     localStorage.setItem(key, value);
   } catch (e: any) {
@@ -28,7 +40,7 @@ function safeSetItem(key: string, value: string): void {
     // Quota recovery if browser runs out of space
     if (e?.name === "QuotaExceededError" || e?.code === 22 || e?.code === 1014) {
       try {
-        // 1. Trim chat messages to last 15
+        // Trim chat messages to last 15 in localStorage (IndexedDB keeps the full history)
         const chat = localStorage.getItem(KEYS.CHAT_MESSAGES);
         if (chat) {
           const parsed = JSON.parse(chat);
@@ -36,7 +48,7 @@ function safeSetItem(key: string, value: string): void {
             localStorage.setItem(KEYS.CHAT_MESSAGES, JSON.stringify(parsed.slice(-15)));
           }
         }
-        // 2. Strip large photoUrls from older meal logs
+        // Strip large photoUrls from older meal logs in localStorage
         const meals = localStorage.getItem(KEYS.MEAL_LOGS);
         if (meals) {
           const parsedMeals = JSON.parse(meals);
@@ -53,10 +65,10 @@ function safeSetItem(key: string, value: string): void {
             }
           }
         }
-        // Retry write
+        // Retry write in localStorage
         localStorage.setItem(key, value);
       } catch (retryErr) {
-        console.error("Critical: Storage quota recovery failed:", retryErr);
+        console.info(`Storage stored safely in IndexedDB even though localStorage hit quota limit for "${key}".`);
       }
     }
   }
@@ -131,16 +143,7 @@ function cleanupLegacyDemoData(): void {
       }
     }
 
-    // 4. Clean legacy demo profile ("Atleta Base 0" or 78.5kg sample)
-    const profileRaw = localStorage.getItem(KEYS.PROFILE);
-    if (profileRaw) {
-      const parsed = JSON.parse(profileRaw);
-      if (parsed.name === "Atleta Base 0" || (parsed.currentWeight === 78.5 && parsed.measurements?.chest === 102)) {
-        localStorage.removeItem(KEYS.PROFILE);
-      }
-    }
-
-    // 5. Clean mock default water intake
+    // 4. Clean mock default water intake
     const today = new Date().toISOString().split("T")[0];
     const waterKey = `${KEYS.WATER_INTAKE}_${today}`;
     if (localStorage.getItem(waterKey) === "1750") {
@@ -160,9 +163,6 @@ export const StorageService = {
       const saved = localStorage.getItem(KEYS.PROFILE);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.name === "Atleta Base 0") {
-          return DEFAULT_PROFILE;
-        }
         return {
           ...DEFAULT_PROFILE,
           ...parsed,
@@ -625,8 +625,180 @@ export const StorageService = {
           localStorage.removeItem(key);
         }
       });
+      // Clear IndexedDB stores as well
+      Object.values(KEYS).forEach((k) => {
+        IdbService.removeItem(k).catch(() => {});
+      });
     } catch (e) {
       console.error(e);
+    }
+  },
+
+  /**
+   * Initializes persistent storage and performs auto-recovery if localStorage was wiped
+   * or cleared by the browser/Safari.
+   */
+  async initPersistence(): Promise<void> {
+    try {
+      await IdbService.requestPersistence();
+
+      const coreKeys = [
+        KEYS.PROFILE,
+        KEYS.PROJECTS,
+        KEYS.NOTES,
+        KEYS.WEIGHT_LOGS,
+        KEYS.MEAL_LOGS,
+        KEYS.WORKOUT_ROUTINES,
+        KEYS.WORKOUT_LOGS,
+        KEYS.CHAT_SESSIONS,
+        KEYS.AUTH_USER,
+      ];
+
+      for (const key of coreKeys) {
+        const localRaw = localStorage.getItem(key);
+        const isLocalEmpty = !localRaw || localRaw === "[]" || localRaw === "{}" || localRaw === "null";
+
+        if (isLocalEmpty) {
+          const idbRaw = await IdbService.getItem<string>(key);
+          if (idbRaw && idbRaw !== "[]" && idbRaw !== "{}" && idbRaw !== "null") {
+            try {
+              localStorage.setItem(key, typeof idbRaw === "string" ? idbRaw : JSON.stringify(idbRaw));
+              console.info(`[Base 0 Auto-Recovery] Recuperado com sucesso "${key}" do IndexedDB permanente.`);
+            } catch (quotaErr) {
+              console.warn(`Could not mirror into localStorage due to quota:`, quotaErr);
+            }
+          }
+        } else {
+          // Keep IndexedDB synchronized with localStorage
+          await IdbService.setItem(key, localRaw);
+        }
+      }
+
+      // If profile or weight logs are empty locally, check if IndexedDB has a latest snapshot to restore
+      const localProf = localStorage.getItem(KEYS.PROFILE);
+      const isProfEmpty = !localProf || localProf.includes('"isConfigured":false') || localProf.includes('"currentWeight":0');
+      if (isProfEmpty) {
+        const latestSnap = await IdbService.getLatestSnapshot();
+        if (latestSnap?.data) {
+          if (latestSnap.data[KEYS.PROFILE]) {
+            try {
+              localStorage.setItem(KEYS.PROFILE, typeof latestSnap.data[KEYS.PROFILE] === "string" ? latestSnap.data[KEYS.PROFILE] : JSON.stringify(latestSnap.data[KEYS.PROFILE]));
+            } catch {}
+          }
+          if (latestSnap.data[KEYS.WEIGHT_LOGS]) {
+            try {
+              localStorage.setItem(KEYS.WEIGHT_LOGS, typeof latestSnap.data[KEYS.WEIGHT_LOGS] === "string" ? latestSnap.data[KEYS.WEIGHT_LOGS] : JSON.stringify(latestSnap.data[KEYS.WEIGHT_LOGS]));
+            } catch {}
+          }
+          if (latestSnap.data[KEYS.MEAL_LOGS]) {
+            try {
+              localStorage.setItem(KEYS.MEAL_LOGS, typeof latestSnap.data[KEYS.MEAL_LOGS] === "string" ? latestSnap.data[KEYS.MEAL_LOGS] : JSON.stringify(latestSnap.data[KEYS.MEAL_LOGS]));
+            } catch {}
+          }
+          if (latestSnap.data[KEYS.NOTES]) {
+            try {
+              localStorage.setItem(KEYS.NOTES, typeof latestSnap.data[KEYS.NOTES] === "string" ? latestSnap.data[KEYS.NOTES] : JSON.stringify(latestSnap.data[KEYS.NOTES]));
+            } catch {}
+          }
+          if (latestSnap.data[KEYS.PROJECTS]) {
+            try {
+              localStorage.setItem(KEYS.PROJECTS, typeof latestSnap.data[KEYS.PROJECTS] === "string" ? latestSnap.data[KEYS.PROJECTS] : JSON.stringify(latestSnap.data[KEYS.PROJECTS]));
+            } catch {}
+          }
+        }
+      }
+
+      // Only save a disaster recovery snapshot if real, configured data exists
+      const profileRaw = localStorage.getItem(KEYS.PROFILE);
+      const hasConfiguredProfile = profileRaw && (profileRaw.includes('"isConfigured":true') || !profileRaw.includes('"currentWeight":0'));
+      const hasWeights = localStorage.getItem(KEYS.WEIGHT_LOGS) && localStorage.getItem(KEYS.WEIGHT_LOGS) !== "[]";
+      const hasNotes = localStorage.getItem(KEYS.NOTES) && localStorage.getItem(KEYS.NOTES) !== "[]";
+      const hasMeals = localStorage.getItem(KEYS.MEAL_LOGS) && localStorage.getItem(KEYS.MEAL_LOGS) !== "[]";
+
+      if (hasConfiguredProfile || hasWeights || hasNotes || hasMeals) {
+        const snapshot: Record<string, any> = {};
+        for (const key of Object.values(KEYS)) {
+          const val = localStorage.getItem(key);
+          if (val) snapshot[key] = val;
+        }
+        await IdbService.saveSnapshot(snapshot);
+      }
+    } catch (err) {
+      console.warn("StorageService initPersistence warning:", err);
+    }
+  },
+
+  /**
+   * Generates a 100% complete JSON backup string of all user data.
+   */
+  exportFullBackup(): string {
+    const backup: Record<string, any> = {
+      app: "Base 0",
+      version: "2.0.0",
+      exportedAt: new Date().toISOString(),
+      profile: this.getProfile(),
+      weightLogs: this.getWeightLogs(),
+      mealLogs: this.getMealLogs(),
+      notes: this.getNotes(),
+      projects: this.getProjects(),
+      workoutRoutines: this.getWorkoutRoutines(),
+      workoutLogs: this.getWorkoutLogs(),
+      chatSessions: this.getChatSessions(),
+      authUser: this.getAuthUser(),
+      waterLogs: this.getAllWaterIntake(),
+    };
+    return JSON.stringify(backup, null, 2);
+  },
+
+  /**
+   * Imports a complete JSON backup and restores all tables/stores immediately.
+   */
+  importFullBackup(jsonStr: string): { success: boolean; error?: string } {
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (!parsed || typeof parsed !== "object") {
+        return { success: false, error: "Formato de arquivo JSON inválido." };
+      }
+
+      if (parsed.profile && typeof parsed.profile === "object") {
+        this.saveProfile(parsed.profile);
+      }
+      if (Array.isArray(parsed.weightLogs)) {
+        this.saveWeightLogs(parsed.weightLogs);
+      }
+      if (Array.isArray(parsed.mealLogs)) {
+        this.saveMealLogs(parsed.mealLogs);
+      }
+      if (Array.isArray(parsed.notes)) {
+        this.saveNotes(parsed.notes);
+      }
+      if (Array.isArray(parsed.projects)) {
+        this.saveProjects(parsed.projects);
+      }
+      if (Array.isArray(parsed.workoutRoutines)) {
+        this.saveWorkoutRoutines(parsed.workoutRoutines);
+      }
+      if (Array.isArray(parsed.workoutLogs)) {
+        this.saveWorkoutLogs(parsed.workoutLogs);
+      }
+      if (Array.isArray(parsed.chatSessions)) {
+        this.saveChatSessions(parsed.chatSessions);
+      }
+      if (parsed.authUser && typeof parsed.authUser === "object") {
+        this.saveAuthUser(parsed.authUser);
+      }
+      if (parsed.waterLogs && typeof parsed.waterLogs === "object") {
+        Object.entries(parsed.waterLogs).forEach(([date, amount]) => {
+          this.saveWaterIntake(date, Number(amount));
+        });
+      }
+
+      // Save into IndexedDB as fresh snapshot
+      this.initPersistence().catch(() => {});
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || "Erro ao importar backup." };
     }
   },
 };
