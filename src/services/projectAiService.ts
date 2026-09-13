@@ -6,6 +6,7 @@ export interface SendProjectMessageParams {
   notesSummary?: string;
   tasksSummary?: string;
   messages: ProjectChatMessage[];
+  languageMode?: "simple" | "technical";
   onChunk: (accumulatedText: string) => void;
   onDone: (finalText: string) => void;
   onError: (error: string) => void;
@@ -42,8 +43,19 @@ function buildProjectAssistantPrompt(
   projectName: string,
   projectDescription: string,
   notesSummary?: string,
-  tasksSummary?: string
+  tasksSummary?: string,
+  languageMode: "simple" | "technical" = "simple"
 ): string {
+  const languageDirective =
+    languageMode === "technical"
+      ? `4. MODO DE LINGUAGEM: TÉCNICA E AVANÇADA
+   - Adote vocabulário técnico preciso, direto e especializado da área do projeto.
+   - Aprofunde-se em conceitos técnicos, arquitetura, boas práticas, metodologias e métricas de alto nível, com alta densidade de informação.`
+      : `4. MODO DE LINGUAGEM: SIMPLES, CLARA E DIDÁTICA (MUITO ACESSÍVEL)
+   - Adote uma linguagem simples, natural, amigável e de facílimo entendimento para qualquer pessoa.
+   - EVITE termos técnicos desnecessários, jargões corporativos ou estrangeirismos vazios.
+   - REGRA MANDATÓRIA: Se for indispensável citar qualquer conceito técnico, sigla, ferramenta ou termo complexo, você DEVE explicá-lo de forma mastigada e muito bem detalhada logo em seguida, usando analogias simples do dia a dia e exemplos práticos para que qualquer pessoa compreenda perfeitamente o que está sendo conversado.`;
+
   return `
 Você é o ASSISTENTE ESPECIALISTA DE PROJETOS do aplicativo Base 0.
 Você é o consultor estratégico, copiloto e parceiro de execução dedicado EXCLUSIVAMENTE ao seguinte projeto:
@@ -62,9 +74,10 @@ DIRETRIZES DO ASSISTENTE DE PROJETO:
 2. MULTIMODALIDADE (ÁUDIO E IMAGEM):
    - Se o usuário enviou uma gravação de áudio ou imagem (mockups, rascunhos, telas, documentos), analise minuciosamente o conteúdo visual ou falado e conecte-o diretamente aos objetivos do projeto.
 3. ESTILO DE COMUNICAÇÃO:
-   - Português brasileiro claro, dinâmico, profissional e motivador.
+   - Português brasileiro claro, dinâmico, motivador e prestativo.
    - Use formatação limpa: **negrito** para termos-chave, parágrafos concisos e listas com marcadores para passos práticos.
-   - Evite enrolação; seja prático, inteligente e proponha soluções de alto impacto.
+   - Evite enrolação; seja prático, inteligente e proponha soluções úteis.
+${languageDirective}
 `;
 }
 
@@ -118,6 +131,7 @@ export const ProjectAiService = {
       notesSummary,
       tasksSummary,
       messages,
+      languageMode,
       onChunk,
       onDone,
       onError,
@@ -141,6 +155,7 @@ export const ProjectAiService = {
               notesSummary,
               tasksSummary,
               messages,
+              languageMode,
             }),
           });
           if (res.ok && res.body) {
@@ -210,6 +225,7 @@ export const ProjectAiService = {
           notesSummary,
           tasksSummary,
           messages,
+          languageMode,
         }),
       });
 
@@ -242,7 +258,8 @@ export const ProjectAiService = {
           projectName,
           projectDescription,
           notesSummary,
-          tasksSummary
+          tasksSummary,
+          languageMode === "technical" ? "technical" : "simple"
         );
         const contents = formatMessagesForClientRest(messages);
 

@@ -12,7 +12,7 @@ import {
   ChevronUp,
   X,
 } from "lucide-react";
-import { ProjectItem, ProjectChatMessage, ProjectNote, ProjectTask } from "../../types";
+import { ProjectItem, ProjectChatMessage, ProjectNote, ProjectTask, ProjectAssistantTone } from "../../types";
 import { ProjectChat } from "./ProjectChat";
 import { ProjectNotes } from "./ProjectNotes";
 import { ProjectTasks } from "./ProjectTasks";
@@ -342,6 +342,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       <div>
         {activeSubTab === "chat" && (
           <ProjectChat
+            projectId={project.id}
             projectName={project.name}
             projectDescription={project.description}
             notes={project.notes}
@@ -350,6 +351,14 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             onUpdateMessages={handleUpdateMessages}
             onClearChat={handleClearChat}
             onNewChat={handleNewChat}
+            assistantTone={project.assistantTone}
+            onChangeAssistantTone={(tone: ProjectAssistantTone) => {
+              onUpdateProject({
+                ...project,
+                assistantTone: tone,
+                updatedAt: new Date().toISOString(),
+              });
+            }}
           />
         )}
 

@@ -18,12 +18,14 @@ import {
   Check,
   Bot,
   User as UserIcon,
+  ChevronDown,
 } from "lucide-react";
-import { ProjectChatMessage, ProjectNote, ProjectTask } from "../../types";
+import { ProjectChatMessage, ProjectNote, ProjectTask, ProjectAssistantTone } from "../../types";
 import { ProjectAiService } from "../../services/projectAiService";
 import { compressImage } from "../../utils/imageCompressor";
 
 interface ProjectChatProps {
+  projectId?: string;
   projectName: string;
   projectDescription: string;
   notes: ProjectNote[];
@@ -32,9 +34,12 @@ interface ProjectChatProps {
   onUpdateMessages: (messages: ProjectChatMessage[]) => void;
   onClearChat: () => void;
   onNewChat: () => void;
+  assistantTone?: ProjectAssistantTone;
+  onChangeAssistantTone?: (tone: ProjectAssistantTone) => void;
 }
 
 export const ProjectChat: React.FC<ProjectChatProps> = ({
+  projectId,
   projectName,
   projectDescription,
   notes,
@@ -43,12 +48,64 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
   onUpdateMessages,
   onClearChat,
   onNewChat,
+  assistantTone,
+  onChangeAssistantTone,
 }) => {
   const [inputValue, setInputValue] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+
+  // Language mode selector state (persisted per-project and globally, defaults to simple)
+  const [languageMode, setLanguageMode] = useState<ProjectAssistantTone>(() => {
+    if (assistantTone) return assistantTone;
+    if (projectId) {
+      const saved = localStorage.getItem(`base0_proj_${projectId}_tone`) as ProjectAssistantTone | null;
+      if (saved === "simple" || saved === "technical") return saved;
+    }
+    const globalDefault = localStorage.getItem("base0_project_assistant_tone") as ProjectAssistantTone | null;
+    if (globalDefault === "simple" || globalDefault === "technical") return globalDefault;
+    return "simple";
+  });
+
+  const [isModeMenuOpen, setIsModeMenuOpen] = useState<boolean>(false);
+  const modeMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (assistantTone) {
+      setLanguageMode(assistantTone);
+    } else if (projectId) {
+      const saved =
+        (localStorage.getItem(`base0_proj_${projectId}_tone`) as ProjectAssistantTone | null) ||
+        (localStorage.getItem("base0_project_assistant_tone") as ProjectAssistantTone | null) ||
+        "simple";
+      setLanguageMode(saved);
+    }
+  }, [projectId, assistantTone]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modeMenuRef.current && !modeMenuRef.current.contains(e.target as Node)) {
+        setIsModeMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectLanguageMode = (mode: ProjectAssistantTone) => {
+    setLanguageMode(mode);
+    try {
+      if (projectId) {
+        localStorage.setItem(`base0_proj_${projectId}_tone`, mode);
+      }
+      localStorage.setItem("base0_project_assistant_tone", mode);
+    } catch {
+      // ignore
+    }
+    onChangeAssistantTone?.(mode);
+  };
 
   // Audio recording states
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -329,6 +386,7 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
       notesSummary,
       tasksSummary,
       messages: newMessages,
+      languageMode,
       onChunk: (accumulatedText) => {
         const updated = latestMessagesRef.current.map((msg) =>
           msg.id === modelMessageId ? { ...msg, content: accumulatedText, isStreaming: true } : msg
@@ -372,7 +430,7 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
   return (
     <div className="flex flex-col h-[650px] max-h-[75vh] rounded-2xl bg-zinc-950 border border-zinc-800 shadow-xl overflow-hidden relative">
       {/* Top Header of the Chat */}
-      <div className="px-4 py-3 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between gap-3 shrink-0">
+      <div className="px-4 py-3 bg-zinc-900/95 border-b border-zinc-800 flex items-center justify-between gap-3 shrink-0 relative z-20">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-[#007AFF]/20 border border-[#007AFF]/30 flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4 text-[#007AFF]" />
@@ -392,8 +450,99 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
           </div>
         </div>
 
-        {/* Action icons: Novo Chat e Excluir Chat */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right side controls: Mini seletor de linguagem, Novo Chat, Excluir Chat */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Mini Seletor de Modo de Linguagem */}
+          <div className="relative" ref={modeMenuRef}>
+            <button
+              id="btn-project-language-mode-menu"
+              type="button"
+              onClick={() => setIsModeMenuOpen((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none active:scale-95 shadow-sm ${
+                languageMode === "simple"
+                  ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                  : "bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/30"
+              }`}
+              title="Escolher entre Linguagem Simples (didática) ou Técnica (aprofundada)"
+            >
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: languageMode === "simple" ? "#10b981" : "#3b82f6" }}
+              />
+              <span className="hidden md:inline text-zinc-400 font-normal">Linguagem:</span>
+              <span>{languageMode === "simple" ? "Simples" : "Técnica"}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 opacity-80 ${
+                  isModeMenuOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isModeMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-72 p-2 rounded-2xl bg-zinc-900 border border-zinc-700 shadow-2xl z-40 space-y-1.5 backdrop-blur-md">
+                <div className="px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-800 pb-1.5 flex items-center justify-between">
+                  <span>Modo do Assistente</span>
+                  <span className="text-zinc-400 text-[10px]">Salvo automaticamente</span>
+                </div>
+
+                <button
+                  type="button"
+                  id="btn-select-language-simple"
+                  onClick={() => {
+                    handleSelectLanguageMode("simple");
+                    setIsModeMenuOpen(false);
+                  }}
+                  className={`w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                    languageMode === "simple"
+                      ? "bg-emerald-500/15 border border-emerald-500/40 text-white shadow-sm"
+                      : "text-zinc-300 hover:bg-zinc-800/80 border border-transparent"
+                  }`}
+                >
+                  <span className="text-base leading-none mt-0.5">🌱</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-400">Linguagem Simples</span>
+                      {languageMode === "simple" && (
+                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-zinc-300 leading-snug mt-1">
+                      Comunicação acessível e didática. Se houver termos técnicos, serão <strong>muito bem explicados</strong> com exemplos simples.
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  id="btn-select-language-technical"
+                  onClick={() => {
+                    handleSelectLanguageMode("technical");
+                    setIsModeMenuOpen(false);
+                  }}
+                  className={`w-full flex items-start gap-2.5 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                    languageMode === "technical"
+                      ? "bg-blue-500/15 border border-blue-500/40 text-white shadow-sm"
+                      : "text-zinc-300 hover:bg-zinc-800/80 border border-transparent"
+                  }`}
+                >
+                  <span className="text-base leading-none mt-0.5">⚙️</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-blue-400">Linguagem Técnica</span>
+                      {languageMode === "technical" && (
+                        <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-zinc-300 leading-snug mt-1">
+                      Terminologia técnica precisa, arquitetura, métricas e boas práticas avançadas para especialistas.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Novo Chat */}
           <button
             id="btn-new-project-chat"
@@ -427,6 +576,37 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Sub-header Indicador do Modo de Linguagem */}
+      <div
+        className={`px-4 py-1.5 border-b text-[11px] flex items-center justify-between transition-colors shrink-0 ${
+          languageMode === "simple"
+            ? "bg-emerald-950/20 border-emerald-900/30 text-emerald-300/90"
+            : "bg-blue-950/20 border-blue-900/30 text-blue-300/90"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span>{languageMode === "simple" ? "🌱" : "⚙️"}</span>
+          <span className="truncate">
+            {languageMode === "simple" ? (
+              <>
+                <strong className="text-emerald-400">Modo Linguagem Simples:</strong> termos técnicos são traduzidos e explicados com clareza.
+              </>
+            ) : (
+              <>
+                <strong className="text-blue-400">Modo Linguagem Técnica:</strong> foco em terminologia especializada e arquitetura avançada.
+              </>
+            )}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsModeMenuOpen(true)}
+          className="text-[10px] underline underline-offset-2 hover:text-white cursor-pointer ml-2 shrink-0 font-medium"
+        >
+          Mudar modo
+        </button>
       </div>
 
       {/* Messages Scroll Area */}

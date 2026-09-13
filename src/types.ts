@@ -179,6 +179,8 @@ export interface ProjectTask {
   dueDate?: string;
 }
 
+export type ProjectAssistantTone = "simple" | "technical";
+
 export interface ProjectChatMessage {
   id: string;
   role: "user" | "model";
@@ -203,4 +205,5 @@ export interface ProjectItem {
   notes: ProjectNote[];
   chatMessages: ProjectChatMessage[];
   tasks?: ProjectTask[];
+  assistantTone?: ProjectAssistantTone;
 }
