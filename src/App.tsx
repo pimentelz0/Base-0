@@ -22,7 +22,6 @@ import { GulinhaService, UserFitnessContext } from "./services/gulinhaService";
 export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser>(() => StorageService.getAuthUser());
   const [isLoggedOutByUser, setIsLoggedOutByUser] = useState(false);
-  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
   const [isCloudLoading, setIsCloudLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => StorageService.getWeightLogs());
@@ -187,39 +186,98 @@ export default function App() {
   // Check Supabase session & fetch cloud data on initial mount
   useEffect(() => {
     async function initSessionAndData() {
-      setIsInitializingAuth(true);
       try {
         await StorageService.initPersistence();
 
         // 1. Check if an active Supabase user session exists
         const currentUser = await SupabaseService.getCurrentUser();
         const storedAuth = StorageService.getStoredAuthUser();
+        const activeUser = currentUser || storedAuth;
 
-        if (currentUser) {
-          setAuthUser(currentUser);
-          StorageService.saveAuthUser(currentUser);
+        // 2. Scan if current local state needs recovery from IndexedDB
+        let localProf = StorageService.getProfile();
+        let localW = StorageService.getWeightLogs();
+        let localM = StorageService.getMealLogs();
+        let localN = StorageService.getNotes();
+
+        if ((!localProf.isConfigured || !localProf.currentWeight) && localW.length === 0) {
+          try {
+            const recovered = await DeepRecoveryService.scanForLostData();
+            if (recovered.profile && (recovered.profile.isConfigured || (recovered.profile.currentWeight || 0) > 0)) {
+              localProf = recovered.profile;
+              setProfile(recovered.profile);
+              StorageService.saveProfile(recovered.profile);
+            }
+            if (recovered.weightLogs && recovered.weightLogs.length > 0) {
+              localW = recovered.weightLogs;
+              setWeightLogs(recovered.weightLogs);
+              StorageService.saveWeightLogs(recovered.weightLogs);
+            }
+            if (recovered.mealLogs && recovered.mealLogs.length > 0) {
+              localM = recovered.mealLogs;
+              setMealLogs(recovered.mealLogs);
+              StorageService.saveMealLogs(recovered.mealLogs);
+            }
+            if (recovered.notes && recovered.notes.length > 0) {
+              localN = recovered.notes;
+              setNotes(recovered.notes);
+              StorageService.saveNotes(recovered.notes);
+            }
+          } catch {}
+        }
+
+        if (activeUser) {
+          setAuthUser(activeUser);
+          StorageService.saveAuthUser(activeUser);
           setIsLoggedOutByUser(false);
 
           // Fetch user's data from Supabase!
           setIsCloudLoading(true);
           const remote = await SupabaseService.fetchAllUserData();
-          applyRemoteData(remote);
-        } else if (storedAuth) {
-          setAuthUser(storedAuth);
-          setIsLoggedOutByUser(false);
+          
+          const remoteHasProfile = remote.profile && (remote.profile.isConfigured || (remote.profile.currentWeight || 0) > 0);
+          
+          if (remoteHasProfile) {
+            applyRemoteData(remote);
+          } else if (localProf.isConfigured || (localProf.currentWeight || 0) > 0 || localW.length > 0) {
+            // Supabase tables were just created or empty, but local has the user's filled data!
+            // Auto-migrate local data up to Supabase so it's safely saved in the cloud now.
+            const profileToSave: UserProfile = {
+              ...localProf,
+              email: activeUser.email || localProf.email,
+              updatedAt: new Date().toISOString(),
+            };
+            setProfile(profileToSave);
+            StorageService.saveProfile(profileToSave);
 
-          // Try to fetch remote
-          setIsCloudLoading(true);
-          const remote = await SupabaseService.fetchAllUserData();
-          applyRemoteData(remote);
+            await SupabaseService.syncAllUserData({
+              profile: profileToSave,
+              weightLogs: localW,
+              mealLogs: localM,
+              notes: localN,
+            });
+            applyRemoteData(remote);
+          } else {
+            applyRemoteData(remote);
+          }
         } else {
-          // No user logged in yet on this browser/URL
-          setIsLoggedOutByUser(true);
+          // If no active user session, but we have local profile, keep user logged in with local auth
+          if (localProf.isConfigured || (localProf.currentWeight || 0) > 0) {
+            const fallbackUser: AuthUser = {
+              id: "local_user",
+              email: localProf.email || "atleta@base0.app",
+              name: localProf.name || "Atleta",
+              createdAt: new Date().toISOString(),
+            };
+            setAuthUser(fallbackUser);
+            setIsLoggedOutByUser(false);
+          } else {
+            setIsLoggedOutByUser(true);
+          }
         }
       } catch (err) {
         console.warn("Init session error:", err);
       } finally {
-        setIsInitializingAuth(false);
         setIsCloudLoading(false);
       }
     }
@@ -721,7 +779,7 @@ export default function App() {
       if (remote.profile && (remote.profile.isConfigured || remote.profile.currentWeight > 0)) {
         setProfile(remote.profile);
         StorageService.saveProfile(remote.profile);
-      } else if (profile.isConfigured) {
+      } else if (profile.isConfigured || (profile.currentWeight || 0) > 0) {
         // If account is new on Supabase but local has a configured profile, push local to Supabase
         const updatedProf: UserProfile = {
           ...profile,
@@ -731,7 +789,12 @@ export default function App() {
         };
         setProfile(updatedProf);
         StorageService.saveProfile(updatedProf);
-        await SupabaseService.syncProfile(updatedProf);
+        await SupabaseService.syncAllUserData({
+          profile: updatedProf,
+          weightLogs,
+          mealLogs,
+          notes,
+        });
       } else if (initialName && initialName !== "Atleta") {
         const updatedProf: UserProfile = {
           ...profile,
@@ -788,25 +851,6 @@ export default function App() {
     setIsLoggedOutByUser(true);
     setActiveTab("home");
   };
-
-  if (isInitializingAuth) {
-    return (
-      <div className="min-h-screen w-full bg-black text-white flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans',sans-serif]">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-11 h-11 rounded-2xl bg-[#007AFF] text-black font-black flex items-center justify-center font-['Outfit'] text-2xl shadow-lg shadow-[#007AFF]/30 animate-pulse">
-            0
-          </div>
-          <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
-            BASE <span className="text-[#007AFF]">0</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 font-mono">
-          <div className="w-3.5 h-3.5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-          <span>Sincronizando com Supabase Cloud...</span>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoggedOutByUser) {
     return <LoginScreen onLogin={handleLogin} />;
