@@ -1,5 +1,6 @@
 import { UserProfile, WeightLog, MealLog, ChatMessage, ChatSession, NoteItem, AuthUser, WorkoutRoutine, WorkoutSessionLog, ProjectItem } from "../types";
 import { IdbService } from "./idbStorage";
+import { SupabaseService } from "../lib/supabase";
 
 const KEYS = {
   AUTH_USER: "base0_auth_user_v1",
@@ -185,6 +186,7 @@ export const StorageService = {
       updatedAt: profile.updatedAt || new Date().toISOString(),
     };
     safeSetItem(KEYS.PROFILE, JSON.stringify(toSave));
+    SupabaseService.scheduleCloudBackup({ profile: toSave });
 
     // Keep authUser synchronized so name and email are always up-to-date
     try {
@@ -220,6 +222,7 @@ export const StorageService = {
 
   saveWeightLogs(logs: WeightLog[]): void {
     safeSetItem(KEYS.WEIGHT_LOGS, JSON.stringify(logs));
+    SupabaseService.scheduleCloudBackup({ weightLogs: logs });
   },
 
   getMealLogs(): MealLog[] {
@@ -239,6 +242,7 @@ export const StorageService = {
 
   saveMealLogs(logs: MealLog[]): void {
     safeSetItem(KEYS.MEAL_LOGS, JSON.stringify(logs));
+    SupabaseService.scheduleCloudBackup({ mealLogs: logs });
   },
 
   getChatMessages(): ChatMessage[] {
@@ -297,6 +301,7 @@ export const StorageService = {
 
   saveChatSessions(sessions: ChatSession[]): void {
     safeSetItem(KEYS.CHAT_SESSIONS, JSON.stringify(sessions));
+    SupabaseService.scheduleCloudBackup({ chatSessions: sessions });
     // Mirror active session messages to legacy KEYS.CHAT_MESSAGES
     const activeId = this.getActiveChatSessionId();
     const active = sessions.find((s) => s.id === activeId) || sessions[0];
@@ -340,6 +345,17 @@ export const StorageService = {
 
   saveWaterIntake(dateStr: string, amount: number): void {
     safeSetItem(`${KEYS.WATER_INTAKE}_${dateStr}`, String(Math.max(0, amount)));
+    SupabaseService.scheduleCloudBackup({ waterIntake: { [dateStr]: Math.max(0, amount) } });
+  },
+
+  saveAllWaterIntake(records: Record<string, number>): void {
+    try {
+      Object.entries(records).forEach(([dateStr, amount]) => {
+        safeSetItem(`${KEYS.WATER_INTAKE}_${dateStr}`, String(amount));
+      });
+    } catch (e) {
+      console.error(e);
+    }
   },
 
   getAllWaterIntake(): Record<string, number> {
@@ -356,6 +372,21 @@ export const StorageService = {
       console.error(e);
     }
     return res;
+  },
+
+  getStoredAuthUser(): AuthUser | null {
+    try {
+      const saved = localStorage.getItem(KEYS.AUTH_USER);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object" && (parsed.email || parsed.id)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error("StorageService getStoredAuthUser error:", e);
+    }
+    return null;
   },
 
   getAuthUser(): AuthUser {
@@ -437,6 +468,7 @@ export const StorageService = {
 
   saveNotes(notes: NoteItem[]): void {
     safeSetItem(KEYS.NOTES, JSON.stringify(notes));
+    SupabaseService.scheduleCloudBackup({ notes });
   },
 
   getWorkoutRoutines(): WorkoutRoutine[] {
@@ -456,6 +488,7 @@ export const StorageService = {
 
   saveWorkoutRoutines(routines: WorkoutRoutine[]): void {
     safeSetItem(KEYS.WORKOUT_ROUTINES, JSON.stringify(routines));
+    SupabaseService.scheduleCloudBackup({ workoutRoutines: routines });
   },
 
   deleteWorkoutRoutine(routineId: string): WorkoutRoutine[] {
@@ -488,6 +521,7 @@ export const StorageService = {
 
   saveWorkoutLogs(logs: WorkoutSessionLog[]): void {
     safeSetItem(KEYS.WORKOUT_LOGS, JSON.stringify(logs));
+    SupabaseService.scheduleCloudBackup({ workoutLogs: logs });
   },
 
   addWorkoutLog(log: WorkoutSessionLog): WorkoutSessionLog[] {
@@ -584,6 +618,7 @@ export const StorageService = {
   saveProjects(projects: ProjectItem[]): void {
     try {
       safeSetItem(KEYS.PROJECTS, JSON.stringify(projects));
+      SupabaseService.scheduleCloudBackup({ projects });
     } catch (e) {
       console.error("Error saving projects:", e);
     }

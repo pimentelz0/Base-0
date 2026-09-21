@@ -6,8 +6,11 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
+  Cloud,
+  CheckCircle2,
 } from "lucide-react";
 import { AuthUser } from "../types";
+import { SupabaseService } from "../lib/supabase";
 import { StorageService } from "../utils/storage";
 
 interface LoginScreenProps {
@@ -22,32 +25,83 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleQuickDirectEntry = () => {
-    const existingProf = StorageService.getProfile();
-    const displayName = existingProf?.name && existingProf.name.trim() && existingProf.name !== "Atleta Base 0" ? existingProf.name : "Atleta";
-    const userEmail = existingProf?.email && existingProf.email.trim() ? existingProf.email : "atleta@base0.app";
-    const authUser: AuthUser = {
-      id: `usr_${Date.now()}`,
-      email: userEmail,
-      name: displayName,
-      createdAt: new Date().toISOString(),
-    };
-    onLogin(authUser);
+  // Quick 1-tap entry authenticated with Supabase
+  const handleQuickDirectEntry = async () => {
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const existingProf = StorageService.getProfile();
+      const displayName =
+        existingProf?.name && existingProf.name.trim() && existingProf.name !== "Atleta Base 0"
+          ? existingProf.name
+          : "Atleta";
+      const userEmail =
+        existingProf?.email && existingProf.email.trim() ? existingProf.email : "atleta@base0.app";
+
+      // Try signing in with default athlete credentials on Supabase
+      const { user: loggedInUser, error: signInErr } = await SupabaseService.signIn(
+        userEmail,
+        "Base0Athlete123!"
+      );
+
+      if (loggedInUser) {
+        setLoading(false);
+        onLogin(loggedInUser, displayName);
+        return;
+      }
+
+      // If user doesn't exist yet on Supabase, register it
+      if (signInErr && (signInErr.includes("Invalid login") || signInErr.includes("not found"))) {
+        const { user: registeredUser } = await SupabaseService.signUp(
+          userEmail,
+          "Base0Athlete123!",
+          displayName
+        );
+        if (registeredUser) {
+          setLoading(false);
+          onLogin(registeredUser, displayName);
+          return;
+        }
+      }
+
+      // Fallback to local session
+      const fallbackUser: AuthUser = {
+        id: `usr_${Date.now()}`,
+        email: userEmail,
+        name: displayName,
+        createdAt: new Date().toISOString(),
+      };
+      setLoading(false);
+      onLogin(fallbackUser, displayName);
+    } catch (e: any) {
+      console.warn("Direct entry error:", e);
+      const fallbackUser: AuthUser = {
+        id: "usr_athlete_main",
+        email: "atleta@base0.app",
+        name: "Atleta",
+        createdAt: new Date().toISOString(),
+      };
+      setLoading(false);
+      onLogin(fallbackUser);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+    setSuccessMessage("");
 
-    if (!email || !email.includes("@")) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
       setErrorMessage("Por favor, informe um e-mail válido.");
       return;
     }
 
-    if (!password || password.length < 4) {
-      setErrorMessage("A senha deve ter pelo menos 4 caracteres.");
+    if (!password || password.length < 6) {
+      setErrorMessage("A senha deve ter no mínimo 6 caracteres para segurança no Supabase.");
       return;
     }
 
@@ -58,23 +112,60 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
     setLoading(true);
 
-    setTimeout(() => {
-      const displayName =
-        mode === "register"
-          ? name.trim()
-          : email.split("@")[0].charAt(0).toUpperCase() +
-            email.split("@")[0].slice(1);
+    try {
+      if (mode === "login") {
+        const { user, error } = await SupabaseService.signIn(cleanEmail, password);
 
-      const authUser: AuthUser = {
-        id: `usr_${Date.now()}`,
-        email: email.trim().toLowerCase(),
-        name: displayName,
-        createdAt: new Date().toISOString(),
-      };
+        if (error) {
+          if (error.includes("Invalid login") || error.includes("credentials")) {
+            setErrorMessage(
+              "E-mail ou senha incorretos no Supabase. Se ainda não criou sua conta com esta senha, selecione 'Cadastre-se aqui' logo abaixo."
+            );
+          } else {
+            setErrorMessage(error);
+          }
+          setLoading(false);
+          return;
+        }
 
+        if (user) {
+          setSuccessMessage("Autenticado no Supabase com sucesso! Carregando seus dados...");
+          setTimeout(() => {
+            setLoading(false);
+            onLogin(user);
+          }, 400);
+          return;
+        }
+      } else {
+        // Register mode
+        const cleanName = name.trim();
+        const { user, error } = await SupabaseService.signUp(cleanEmail, password, cleanName);
+
+        if (error) {
+          if (error.includes("already registered") || error.includes("User already")) {
+            setErrorMessage(
+              "Este e-mail já está cadastrado no Supabase. Mude para 'Entre aqui' para fazer login com sua senha."
+            );
+          } else {
+            setErrorMessage(error);
+          }
+          setLoading(false);
+          return;
+        }
+
+        if (user) {
+          setSuccessMessage("Conta criada e vinculada no Supabase!");
+          setTimeout(() => {
+            setLoading(false);
+            onLogin(user, cleanName);
+          }, 400);
+          return;
+        }
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Ocorreu um erro ao conectar ao Supabase.");
       setLoading(false);
-      onLogin(authUser, mode === "register" ? displayName : undefined);
-    }, 450);
+    }
   };
 
   return (
@@ -84,7 +175,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       <div className="absolute bottom-10 right-10 w-64 h-64 bg-[#00F0FF]/10 rounded-full blur-[90px] pointer-events-none" />
 
       {/* Top Header Branding */}
-      <header className="w-full max-w-md mx-auto flex items-center justify-center pt-3 z-10">
+      <header className="w-full max-w-md mx-auto flex items-center justify-between pt-3 z-10">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-[#007AFF] text-black font-black flex items-center justify-center font-['Outfit'] text-lg shadow-lg shadow-[#007AFF]/25">
             0
@@ -92,6 +183,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           <span className="text-xl font-black tracking-tight text-white font-['Outfit']">
             BASE <span className="text-[#007AFF]">0</span>
           </span>
+        </div>
+
+        {/* Supabase Cloud Pill */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900/80 border border-zinc-800 text-[11px] font-mono text-zinc-300">
+          <Cloud className="w-3.5 h-3.5 text-[#007AFF]" />
+          <span>Supabase Cloud</span>
         </div>
       </header>
 
@@ -101,14 +198,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           {/* Title */}
           <div className="text-center space-y-1.5">
             <h1 className="text-2xl sm:text-3xl font-black text-white font-['Outfit'] tracking-tight">
-              {mode === "login" ? "Bem-vindo de volta" : "Criar sua conta"}
+              {mode === "login" ? "Entrar na sua Conta" : "Criar sua conta"}
             </h1>
             <p className="text-xs text-zinc-400">
               {mode === "login"
-                ? "Acesse seus treinos, pesagens e evolução diária."
-                : "Comece sua jornada de evolução física e mental hoje."}
+                ? "Sua conta é sincronizada na nuvem via Supabase entre todos os seus dispositivos."
+                : "Crie sua conta para manter seus dados, treinos e projetos sempre salvos na nuvem."}
             </p>
           </div>
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-2 animate-fadeIn">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+          )}
 
           {/* Error Message */}
           {errorMessage && (
@@ -161,9 +266,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   Senha
                 </label>
                 {mode === "login" && (
-                  <span className="text-[11px] text-[#007AFF] cursor-pointer hover:underline font-mono">
-                    Esqueceu?
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("register");
+                      setErrorMessage("Digite seu e-mail e uma nova senha para criar sua conta no Supabase.");
+                    }}
+                    className="text-[11px] text-[#007AFF] hover:underline font-mono"
+                  >
+                    Criar nova senha
+                  </button>
                 )}
               </div>
               <div className="relative">
@@ -173,7 +285,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Mínimo 6 caracteres"
                   className="w-full pl-10 pr-11 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-[#007AFF] outline-none font-mono transition-colors"
                 />
                 <button
@@ -199,7 +311,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded bg-zinc-900 border-zinc-700 text-[#007AFF] focus:ring-0 cursor-pointer"
                 />
-                <span>Lembrar neste dispositivo</span>
+                <span>Manter sessão salva (não deslogar)</span>
               </label>
             </div>
 
@@ -215,7 +327,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               ) : (
                 <>
                   <span>
-                    {mode === "login" ? "Entrar na Base 0" : "Criar Minha Conta"}
+                    {mode === "login" ? "Entrar na Minha Conta" : "Criar Minha Conta no Supabase"}
                   </span>
                   <ArrowRight className="w-4 h-4 stroke-[3]" />
                 </>
@@ -226,14 +338,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <button
               type="button"
               id="quick-direct-entry-btn"
+              disabled={loading}
               onClick={handleQuickDirectEntry}
-              className="w-full py-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 hover:border-zinc-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 hover:border-zinc-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <span>Entrar Direto (Acesso Imediato)</span>
+              <Cloud className="w-3.5 h-3.5 text-[#007AFF]" />
+              <span>Entrar Direto (Perfil Atleta Nuvem)</span>
             </button>
           </form>
 
-          {/* Simple Switcher Link Below the Button */}
+          {/* Switcher Link */}
           <div className="text-center pt-2">
             {mode === "login" ? (
               <p className="text-xs text-zinc-400">
@@ -244,6 +358,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   onClick={() => {
                     setMode("register");
                     setErrorMessage("");
+                    setSuccessMessage("");
                   }}
                   className="text-[#007AFF] hover:underline font-bold transition-colors cursor-pointer"
                 >
@@ -259,6 +374,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   onClick={() => {
                     setMode("login");
                     setErrorMessage("");
+                    setSuccessMessage("");
                   }}
                   className="text-[#007AFF] hover:underline font-bold transition-colors cursor-pointer"
                 >
@@ -270,16 +386,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         </div>
       </main>
 
-      {/* Standard Commercial Footer */}
+      {/* Footer */}
       <footer className="w-full max-w-md mx-auto text-center z-10 py-3 space-y-1.5">
         <p className="text-[11px] text-zinc-500">
-          © {new Date().getFullYear()} Base 0. Todos os direitos reservados.
+          © {new Date().getFullYear()} Base 0 • Sincronização em Nuvem Supabase
         </p>
-        <div className="flex items-center justify-center gap-3 text-[11px] text-zinc-600">
-          <span className="hover:text-zinc-400 cursor-pointer transition-colors">Termos de Uso</span>
-          <span>•</span>
-          <span className="hover:text-zinc-400 cursor-pointer transition-colors">Política de Privacidade</span>
-        </div>
       </footer>
     </div>
   );

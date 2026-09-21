@@ -22,6 +22,8 @@ import { GulinhaService, UserFitnessContext } from "./services/gulinhaService";
 export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser>(() => StorageService.getAuthUser());
   const [isLoggedOutByUser, setIsLoggedOutByUser] = useState(false);
+  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
+  const [isCloudLoading, setIsCloudLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => StorageService.getWeightLogs());
   const [mealLogs, setMealLogs] = useState<MealLog[]>(() => StorageService.getMealLogs());
@@ -133,159 +135,96 @@ export default function App() {
   };
 
 
-  // Initialize IndexedDB persistence and auto-recover any evicted data in background
+  // Apply loaded cloud data from Supabase to state and storage
+  const applyRemoteData = (remote: any) => {
+    if (!remote) return;
+
+    if (remote.profile && (remote.profile.isConfigured || remote.profile.currentWeight > 0)) {
+      setProfile(remote.profile);
+      StorageService.saveProfile(remote.profile);
+    }
+
+    if (Array.isArray(remote.weightLogs) && remote.weightLogs.length > 0) {
+      setWeightLogs(remote.weightLogs);
+      StorageService.saveWeightLogs(remote.weightLogs);
+    }
+
+    if (Array.isArray(remote.mealLogs) && remote.mealLogs.length > 0) {
+      setMealLogs(remote.mealLogs);
+      StorageService.saveMealLogs(remote.mealLogs);
+    }
+
+    if (Array.isArray(remote.notes) && remote.notes.length > 0) {
+      setNotes(remote.notes);
+      StorageService.saveNotes(remote.notes);
+    }
+
+    if (Array.isArray(remote.projects) && remote.projects.length > 0) {
+      StorageService.saveProjects(remote.projects);
+    }
+
+    if (Array.isArray(remote.workoutRoutines) && remote.workoutRoutines.length > 0) {
+      StorageService.saveWorkoutRoutines(remote.workoutRoutines);
+    }
+
+    if (Array.isArray(remote.workoutLogs) && remote.workoutLogs.length > 0) {
+      StorageService.saveWorkoutLogs(remote.workoutLogs);
+    }
+
+    if (remote.waterIntake && typeof remote.waterIntake === "object") {
+      StorageService.saveAllWaterIntake(remote.waterIntake);
+      if (remote.waterIntake[todayStr] !== undefined) {
+        setWaterIntake(remote.waterIntake[todayStr]);
+      }
+    }
+
+    if (Array.isArray(remote.chatSessions) && remote.chatSessions.length > 0) {
+      setChatSessions(remote.chatSessions);
+      StorageService.saveChatSessions(remote.chatSessions);
+    }
+  };
+
+  // Check Supabase session & fetch cloud data on initial mount
   useEffect(() => {
-    async function autoHealAndSync() {
+    async function initSessionAndData() {
+      setIsInitializingAuth(true);
       try {
         await StorageService.initPersistence();
 
-        let p = StorageService.getProfile();
-        let w = StorageService.getWeightLogs();
-        let m = StorageService.getMealLogs();
-        let n = StorageService.getNotes();
+        // 1. Check if an active Supabase user session exists
+        const currentUser = await SupabaseService.getCurrentUser();
+        const storedAuth = StorageService.getStoredAuthUser();
 
-        // If local state is missing data or unconfigured, scan all storage layers automatically!
-        const needsDeepRecovery =
-          (!p.isConfigured || !p.name || p.name === "Atleta Base 0" || p.currentWeight === 0) &&
-          w.length === 0;
+        if (currentUser) {
+          setAuthUser(currentUser);
+          StorageService.saveAuthUser(currentUser);
+          setIsLoggedOutByUser(false);
 
-        if (needsDeepRecovery) {
-          const recovered = await DeepRecoveryService.scanForLostData();
-          if (
-            recovered.profile?.isConfigured ||
-            recovered.weightLogs.length > 0 ||
-            recovered.mealLogs.length > 0 ||
-            recovered.notes.length > 0
-          ) {
-            await DeepRecoveryService.applyRecoveredData(recovered);
-            p = StorageService.getProfile();
-            w = StorageService.getWeightLogs();
-            m = StorageService.getMealLogs();
-            n = StorageService.getNotes();
-          }
-        }
+          // Fetch user's data from Supabase!
+          setIsCloudLoading(true);
+          const remote = await SupabaseService.fetchAllUserData();
+          applyRemoteData(remote);
+        } else if (storedAuth) {
+          setAuthUser(storedAuth);
+          setIsLoggedOutByUser(false);
 
-        if (p?.isConfigured && (!profile?.isConfigured || profile.currentWeight === 0)) {
-          setProfile(p);
-        }
-        if (w.length > 0 && weightLogs.length === 0) {
-          setWeightLogs(w);
-        }
-        if (m.length > 0 && mealLogs.length === 0) {
-          setMealLogs(m);
-        }
-        if (n.length > 0 && notes.length === 0) {
-          setNotes(n);
-        }
-        const u = StorageService.getAuthUser();
-        if (u) {
-          setAuthUser(u);
+          // Try to fetch remote
+          setIsCloudLoading(true);
+          const remote = await SupabaseService.fetchAllUserData();
+          applyRemoteData(remote);
+        } else {
+          // No user logged in yet on this browser/URL
+          setIsLoggedOutByUser(true);
         }
       } catch (err) {
-        console.warn("Storage auto-healing warning:", err);
+        console.warn("Init session error:", err);
+      } finally {
+        setIsInitializingAuth(false);
+        setIsCloudLoading(false);
       }
     }
 
-    autoHealAndSync();
-  }, []);
-
-  // Initial cloud sync from Supabase with timestamp-based conflict resolution
-  useEffect(() => {
-    async function loadCloudData() {
-      try {
-        const remote = await SupabaseService.fetchAllData();
-        
-        // 1. Profile: timestamp conflict resolution (never let empty cloud data overwrite local data)
-        if (remote.profile) {
-          const localProfile = StorageService.getProfile();
-          const remoteTime = new Date(remote.profile.updatedAt || 0).getTime();
-          const localTime = new Date(localProfile.updatedAt || 0).getTime();
-
-          const isRemoteConfigured =
-            Boolean(remote.profile.isConfigured) &&
-            Boolean(remote.profile.name) &&
-            remote.profile.name !== "Atleta Base 0" &&
-            (remote.profile.currentWeight || 0) > 0;
-
-          // Only accept remote if remote is strictly newer than local AND properly configured
-          if (remoteTime > localTime && isRemoteConfigured) {
-            const mergedProfile: UserProfile = {
-              ...localProfile,
-              ...remote.profile,
-              measurements: {
-                ...(localProfile.measurements || {}),
-                ...(remote.profile.measurements || {}),
-              },
-              avatarUrl: remote.profile.avatarUrl || localProfile.avatarUrl,
-            };
-            setProfile(mergedProfile);
-            StorageService.saveProfile(mergedProfile);
-          } else if (localTime > remoteTime && localProfile.isConfigured) {
-            // Local has newer edits! Push local to Supabase so cloud catches up
-            SupabaseService.syncProfile(localProfile).catch(console.warn);
-          }
-        }
-
-        // 2. Weight logs: Merge union by ID without deleting any local or remote entry
-        if (remote.weightLogs && remote.weightLogs.length > 0) {
-          const localLogs = StorageService.getWeightLogs();
-          const map = new Map<string, WeightLog>();
-          remote.weightLogs.forEach((w) => map.set(w.id, w));
-          localLogs.forEach((w) => map.set(w.id, w));
-          const mergedLogs = Array.from(map.values()).sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          setWeightLogs(mergedLogs);
-          StorageService.saveWeightLogs(mergedLogs);
-        }
-
-        // 3. Meal logs: Merge union by ID
-        if (remote.mealLogs && remote.mealLogs.length > 0) {
-          const localMeals = StorageService.getMealLogs();
-          const map = new Map<string, MealLog>();
-          remote.mealLogs.forEach((m) => map.set(m.id, m));
-          localMeals.forEach((m) => map.set(m.id, m));
-          const mergedMeals = Array.from(map.values()).sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          setMealLogs(mergedMeals);
-          StorageService.saveMealLogs(mergedMeals);
-        }
-
-        // 4. Chat messages: Merge union by ID and sort chronologically
-        if (remote.chatMessages && remote.chatMessages.length > 0) {
-          const localChat = StorageService.getChatMessages();
-          const map = new Map<string, ChatMessage>();
-          remote.chatMessages.forEach((c) => map.set(c.id, c));
-          localChat.forEach((c) => map.set(c.id, c));
-          const mergedChat = Array.from(map.values()).sort(
-            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-          );
-          setChatSessions((prev) => {
-            const current = prev.map((s, idx) => {
-              if (idx === 0) {
-                return { ...s, messages: mergedChat };
-              }
-              return s;
-            });
-            StorageService.saveChatSessions(current);
-            return current;
-          });
-          StorageService.saveChatMessages(mergedChat);
-        }
-
-        // 5. Water intake: Merge today's intake taking maximum
-        if (remote.waterIntake && remote.waterIntake[todayStr] !== undefined) {
-          const localWater = StorageService.getWaterIntake(todayStr);
-          const maxWater = Math.max(localWater, remote.waterIntake[todayStr]);
-          setWaterIntake(maxWater);
-          StorageService.saveWaterIntake(todayStr, maxWater);
-        }
-      } catch (err) {
-        console.warn("Supabase background init load error:", err);
-      }
-    }
-    loadCloudData();
+    initSessionAndData();
   }, [todayStr]);
 
   // Sync with localStorage
@@ -769,31 +708,53 @@ export default function App() {
     handleNewChat();
   };
 
-  const handleLogin = (user: AuthUser, initialName?: string) => {
+  const handleLogin = async (user: AuthUser, initialName?: string) => {
     setAuthUser(user);
     StorageService.saveAuthUser(user);
     setIsLoggedOutByUser(false);
+    setIsCloudLoading(true);
 
-    // Only update profile name if not already configured and initialName is not a generic default
-    if (initialName && initialName !== "Atleta") {
-      const currentName = profile.name?.trim();
-      const isPlaceholder = !currentName || currentName === "Atleta Base 0" || currentName === "Atleta";
-      if (isPlaceholder) {
-        const updated: UserProfile = {
+    try {
+      // 1. Fetch user data from Supabase
+      const remote = await SupabaseService.fetchAllUserData();
+
+      if (remote.profile && (remote.profile.isConfigured || remote.profile.currentWeight > 0)) {
+        setProfile(remote.profile);
+        StorageService.saveProfile(remote.profile);
+      } else if (profile.isConfigured) {
+        // If account is new on Supabase but local has a configured profile, push local to Supabase
+        const updatedProf: UserProfile = {
+          ...profile,
+          email: user.email || profile.email,
+          name: initialName && initialName !== "Atleta" ? initialName : profile.name,
+          updatedAt: new Date().toISOString(),
+        };
+        setProfile(updatedProf);
+        StorageService.saveProfile(updatedProf);
+        await SupabaseService.syncProfile(updatedProf);
+      } else if (initialName && initialName !== "Atleta") {
+        const updatedProf: UserProfile = {
           ...profile,
           name: initialName,
           email: user.email || profile.email,
           updatedAt: new Date().toISOString(),
         };
-        setProfile(updated);
-        StorageService.saveProfile(updated);
-        SupabaseService.syncProfile(updated).catch(console.warn);
+        setProfile(updatedProf);
+        StorageService.saveProfile(updatedProf);
+        await SupabaseService.syncProfile(updatedProf);
       }
+
+      applyRemoteData(remote);
+    } catch (e) {
+      console.warn("Supabase fetch on login error:", e);
+    } finally {
+      setIsCloudLoading(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsLoggedOutByUser(true);
+    await SupabaseService.signOut();
     StorageService.clearAuthUser();
     setActiveTab("home");
   };
@@ -828,6 +789,25 @@ export default function App() {
     setActiveTab("home");
   };
 
+  if (isInitializingAuth) {
+    return (
+      <div className="min-h-screen w-full bg-black text-white flex flex-col items-center justify-center p-6 font-['Plus_Jakarta_Sans',sans-serif]">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-11 h-11 rounded-2xl bg-[#007AFF] text-black font-black flex items-center justify-center font-['Outfit'] text-2xl shadow-lg shadow-[#007AFF]/30 animate-pulse">
+            0
+          </div>
+          <span className="text-2xl font-black tracking-tight text-white font-['Outfit']">
+            BASE <span className="text-[#007AFF]">0</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 font-mono">
+          <div className="w-3.5 h-3.5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+          <span>Sincronizando com Supabase Cloud...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoggedOutByUser) {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -844,6 +824,14 @@ export default function App() {
           theme === "dark" ? "bg-radial-ambient" : "bg-radial-ambient opacity-50"
         }`}
       />
+
+      {/* Floating Cloud Sync Indicator */}
+      {isCloudLoading && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-950/90 border border-zinc-800 text-[11px] text-zinc-300 font-mono shadow-xl backdrop-blur-md animate-fadeIn">
+          <div className="w-2.5 h-2.5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+          <span>Sincronizando nuvem Supabase...</span>
+        </div>
+      )}
 
       {/* Top Navbar */}
       <Navbar
