@@ -484,6 +484,7 @@ export const SupabaseService = {
           result.profile = {
             name: pRows.name,
             email: pRows.email || user?.email,
+            avatarUrl: pRows.avatar_url || (pRows.measurements?.avatarUrl) || user?.user_metadata?.avatarUrl || undefined,
             age: pRows.age || 28,
             gender: (pRows.gender as any) || "male",
             height: Number(pRows.height) || 175,
@@ -647,6 +648,47 @@ export const SupabaseService = {
           }));
         }
       } catch {}
+
+      // Chat Messages & Saved Sessions table
+      try {
+        const { data: cRows } = await client
+          .from("base0_chat_messages")
+          .select("*")
+          .or(`profile_id.eq.${userId},profile_id.eq.default_user`)
+          .order("timestamp", { ascending: true });
+
+        if (cRows && cRows.length > 0) {
+          const sessionMap = new Map<string, ChatSession>();
+          for (const row of cRows) {
+            const sId = row.session_id || "session-default";
+            if (!sessionMap.has(sId)) {
+              sessionMap.set(sId, {
+                id: sId,
+                title: "Conversa",
+                createdAt: row.timestamp || new Date().toISOString(),
+                updatedAt: row.timestamp || new Date().toISOString(),
+                messages: [],
+              });
+            }
+            const s = sessionMap.get(sId)!;
+            s.messages.push({
+              id: row.id,
+              role: (row.role as "user" | "model") || "user",
+              content: row.content,
+              timestamp: row.timestamp,
+            });
+            s.updatedAt = row.timestamp;
+            if ((!s.title || s.title === "Conversa" || s.title === "Nova Conversa") && row.role === "user") {
+              const snippet = row.content.trim().slice(0, 32);
+              s.title = snippet + (row.content.trim().length > 32 ? "..." : "");
+            }
+          }
+          const loadedSessions = Array.from(sessionMap.values()).reverse();
+          if (loadedSessions.length > 0) {
+            result.chatSessions = loadedSessions;
+          }
+        }
+      } catch {}
     } catch (err) {
       console.warn("Error fetching data from Supabase:", err);
     }
@@ -706,6 +748,10 @@ export const SupabaseService = {
       // 2. Also push to relational tables if they exist
       if (data.profile) {
         try {
+          const measurementsWithAvatar = {
+            ...(data.profile.measurements || {}),
+            avatarUrl: data.profile.avatarUrl || null,
+          };
           await client
             .from("base0_profiles")
             .upsert(
@@ -721,7 +767,7 @@ export const SupabaseService = {
                 target_weight: data.profile.targetWeight || null,
                 activity_level: data.profile.activityLevel,
                 goal: data.profile.goal,
-                measurements: data.profile.measurements || {},
+                measurements: measurementsWithAvatar,
                 is_configured: data.profile.isConfigured,
                 created_at: data.profile.createdAt,
                 updated_at: new Date().toISOString(),
@@ -835,6 +881,30 @@ export const SupabaseService = {
         } catch {}
       }
 
+      if (data.chatSessions && data.chatSessions.length > 0) {
+        try {
+          const rows: any[] = [];
+          for (const s of data.chatSessions) {
+            for (const m of s.messages) {
+              if (!m.content) continue;
+              rows.push({
+                id: m.id,
+                profile_id: userId,
+                session_id: s.id,
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp,
+              });
+            }
+          }
+          if (rows.length > 0) {
+            await client.from("base0_chat_messages").upsert(rows, { onConflict: "id" });
+          }
+        } catch (chatUpsertErr) {
+          console.warn("Could not upsert base0_chat_messages in syncAllUserData:", chatUpsertErr);
+        }
+      }
+
       return true;
     } catch (err) {
       console.warn("Supabase syncAllUserData warning:", err);
@@ -940,7 +1010,7 @@ export const SupabaseService = {
     }
   },
 
-  async syncChatMessage(msg: ChatMessage): Promise<boolean> {
+  async syncChatMessage(msg: ChatMessage, sessionId?: string): Promise<boolean> {
     const client = getSupabaseClient();
     try {
       const { data: { user } } = await client.auth.getUser();
@@ -949,6 +1019,7 @@ export const SupabaseService = {
         {
           id: msg.id,
           profile_id: userId,
+          session_id: sessionId || null,
           role: msg.role,
           content: msg.content,
           timestamp: msg.timestamp,

@@ -22,7 +22,6 @@ import { GulinhaService, UserFitnessContext } from "./services/gulinhaService";
 export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser>(() => StorageService.getAuthUser());
   const [isLoggedOutByUser, setIsLoggedOutByUser] = useState(false);
-  const [isCloudLoading, setIsCloudLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => StorageService.getWeightLogs());
   const [mealLogs, setMealLogs] = useState<MealLog[]>(() => StorageService.getMealLogs());
@@ -231,8 +230,7 @@ export default function App() {
           StorageService.saveAuthUser(activeUser);
           setIsLoggedOutByUser(false);
 
-          // Fetch user's data from Supabase!
-          setIsCloudLoading(true);
+          // Fetch user's data from Supabase silently in background
           const remote = await SupabaseService.fetchAllUserData();
           
           const remoteHasProfile = remote.profile && (remote.profile.isConfigured || (remote.profile.currentWeight || 0) > 0);
@@ -255,6 +253,7 @@ export default function App() {
               weightLogs: localW,
               mealLogs: localM,
               notes: localN,
+              chatSessions,
             });
             applyRemoteData(remote);
           } else {
@@ -277,8 +276,6 @@ export default function App() {
         }
       } catch (err) {
         console.warn("Init session error:", err);
-      } finally {
-        setIsCloudLoading(false);
       }
     }
 
@@ -555,7 +552,8 @@ export default function App() {
 
     setChatSessions(sessionsAfterUser);
     StorageService.saveChatSessions(sessionsAfterUser);
-    SupabaseService.syncChatMessage(userMsg).catch(console.warn);
+    SupabaseService.syncChatMessage(userMsg, targetSessionId).catch(console.warn);
+    SupabaseService.scheduleCloudBackup({ chatSessions: sessionsAfterUser });
 
     // Initial placeholder bot message for real-time typewriter stream
     const botMsgId = `bot-${Date.now()}`;
@@ -722,10 +720,11 @@ export default function App() {
           return s;
         });
         StorageService.saveChatSessions(next);
+        SupabaseService.scheduleCloudBackup({ chatSessions: next });
         return next;
       });
 
-      SupabaseService.syncChatMessage(finalBotMsg).catch(console.warn);
+      SupabaseService.syncChatMessage(finalBotMsg, targetSessionId).catch(console.warn);
     } catch (err: any) {
       console.error("Erro no Gulinha Chat:", err);
       const fallbackMsg: ChatMessage = {
@@ -766,53 +765,52 @@ export default function App() {
     handleNewChat();
   };
 
-  const handleLogin = async (user: AuthUser, initialName?: string) => {
+  const handleLogin = (user: AuthUser, initialName?: string) => {
     setAuthUser(user);
     StorageService.saveAuthUser(user);
     setIsLoggedOutByUser(false);
-    setIsCloudLoading(true);
 
-    try {
-      // 1. Fetch user data from Supabase
-      const remote = await SupabaseService.fetchAllUserData();
+    // Sync in background without blocking UI or showing delays
+    (async () => {
+      try {
+        const remote = await SupabaseService.fetchAllUserData();
 
-      if (remote.profile && (remote.profile.isConfigured || remote.profile.currentWeight > 0)) {
-        setProfile(remote.profile);
-        StorageService.saveProfile(remote.profile);
-      } else if (profile.isConfigured || (profile.currentWeight || 0) > 0) {
-        // If account is new on Supabase but local has a configured profile, push local to Supabase
-        const updatedProf: UserProfile = {
-          ...profile,
-          email: user.email || profile.email,
-          name: initialName && initialName !== "Atleta" ? initialName : profile.name,
-          updatedAt: new Date().toISOString(),
-        };
-        setProfile(updatedProf);
-        StorageService.saveProfile(updatedProf);
-        await SupabaseService.syncAllUserData({
-          profile: updatedProf,
-          weightLogs,
-          mealLogs,
-          notes,
-        });
-      } else if (initialName && initialName !== "Atleta") {
-        const updatedProf: UserProfile = {
-          ...profile,
-          name: initialName,
-          email: user.email || profile.email,
-          updatedAt: new Date().toISOString(),
-        };
-        setProfile(updatedProf);
-        StorageService.saveProfile(updatedProf);
-        await SupabaseService.syncProfile(updatedProf);
+        if (remote.profile && (remote.profile.isConfigured || remote.profile.currentWeight > 0)) {
+          setProfile(remote.profile);
+          StorageService.saveProfile(remote.profile);
+        } else if (profile.isConfigured || (profile.currentWeight || 0) > 0) {
+          const updatedProf: UserProfile = {
+            ...profile,
+            email: user.email || profile.email,
+            name: initialName && initialName !== "Atleta" ? initialName : profile.name,
+            updatedAt: new Date().toISOString(),
+          };
+          setProfile(updatedProf);
+          StorageService.saveProfile(updatedProf);
+          await SupabaseService.syncAllUserData({
+            profile: updatedProf,
+            weightLogs,
+            mealLogs,
+            notes,
+            chatSessions,
+          });
+        } else if (initialName && initialName !== "Atleta") {
+          const updatedProf: UserProfile = {
+            ...profile,
+            name: initialName,
+            email: user.email || profile.email,
+            updatedAt: new Date().toISOString(),
+          };
+          setProfile(updatedProf);
+          StorageService.saveProfile(updatedProf);
+          await SupabaseService.syncProfile(updatedProf);
+        }
+
+        applyRemoteData(remote);
+      } catch (e) {
+        console.warn("Supabase fetch on login error:", e);
       }
-
-      applyRemoteData(remote);
-    } catch (e) {
-      console.warn("Supabase fetch on login error:", e);
-    } finally {
-      setIsCloudLoading(false);
-    }
+    })();
   };
 
   const handleLogout = async () => {
@@ -868,14 +866,6 @@ export default function App() {
           theme === "dark" ? "bg-radial-ambient" : "bg-radial-ambient opacity-50"
         }`}
       />
-
-      {/* Floating Cloud Sync Indicator */}
-      {isCloudLoading && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-950/90 border border-zinc-800 text-[11px] text-zinc-300 font-mono shadow-xl backdrop-blur-md animate-fadeIn">
-          <div className="w-2.5 h-2.5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-          <span>Sincronizando nuvem Supabase...</span>
-        </div>
-      )}
 
       {/* Top Navbar */}
       <Navbar

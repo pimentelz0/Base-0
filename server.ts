@@ -104,8 +104,8 @@ async function generateWithModelFallback(ai: GoogleGenAI, params: any, customMod
 
 async function generateStreamWithModelFallback(ai: GoogleGenAI, params: any, customModels?: string[]) {
   const candidateModels = customModels && customModels.length > 0 ? customModels : [
-    "gemini-3.6-flash",
     "gemini-3.1-flash-lite",
+    "gemini-3.6-flash",
     "gemini-3.8-flash",
     "gemini-flash-latest",
   ];
@@ -264,6 +264,7 @@ app.post(["/api/gulinha/chat/stream", "/api/gulinha/stream"], async (req, res) =
       config: {
         systemInstruction: contextPrompt,
         temperature: 0.7,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     });
 
@@ -623,14 +624,15 @@ app.post(["/api/project/chat/stream", "/api/project/stream"], async (req, res) =
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders?.();
 
-    // Use resilient model fallback with Gemini 3 models
+    // Use resilient model fallback with fast Gemini 3 models
     const streamResponse = await generateStreamWithModelFallback(ai, {
       contents,
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
-    }, ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"]);
+    }, ["gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest"]);
 
     for await (const chunk of streamResponse) {
       const text = chunk.text;

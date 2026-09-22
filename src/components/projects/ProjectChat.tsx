@@ -23,6 +23,7 @@ import {
 import { ProjectChatMessage, ProjectNote, ProjectTask, ProjectAssistantTone } from "../../types";
 import { ProjectAiService } from "../../services/projectAiService";
 import { compressImage } from "../../utils/imageCompressor";
+import { StorageService } from "../../utils/storage";
 
 interface ProjectChatProps {
   projectId?: string;
@@ -767,11 +768,24 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
                   </div>
                 </div>
 
-                {isUser && (
-                  <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 mt-0.5 text-zinc-300">
-                    <UserIcon className="w-4 h-4" />
-                  </div>
-                )}
+                {isUser && (() => {
+                  const prof = StorageService.getProfile();
+                  return (
+                    <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/70 flex items-center justify-center shrink-0 mt-0.5 text-zinc-300 overflow-hidden shadow-sm">
+                      {prof?.avatarUrl ? (
+                        <img
+                          src={prof.avatarUrl}
+                          alt={prof.name || "Você"}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#007AFF]/20 text-[#007AFF] font-bold text-xs font-['Outfit']">
+                          {(prof?.name || "A").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })

@@ -574,8 +574,18 @@ export const GulinhaChat: React.FC<GulinhaChatProps> = ({
                 </div>
 
                 {isUser && (
-                  <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 shrink-0 mt-0.5">
-                    <User className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-zinc-300 shrink-0 mt-0.5 overflow-hidden shadow-sm">
+                    {profile?.avatarUrl ? (
+                      <img
+                        src={profile.avatarUrl}
+                        alt={profile.name || "Você"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#007AFF]/20 text-[#007AFF] font-bold text-xs font-['Outfit']">
+                        {(profile?.name || "A").charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
