@@ -673,6 +673,9 @@ export default function App() {
       // Treinos e Rotinas da GYM
       workoutRoutinesSummary,
       recentWorkoutLogs,
+      // Consciência temporal do usuário
+      clientTime: new Date().toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
 
     let accumulatedContent = "";

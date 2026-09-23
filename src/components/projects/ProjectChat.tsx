@@ -388,6 +388,8 @@ export const ProjectChat: React.FC<ProjectChatProps> = ({
       tasksSummary,
       messages: newMessages,
       languageMode,
+      clientTime: new Date().toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       onChunk: (accumulatedText) => {
         const updated = latestMessagesRef.current.map((msg) =>
           msg.id === modelMessageId ? { ...msg, content: accumulatedText, isStreaming: true } : msg

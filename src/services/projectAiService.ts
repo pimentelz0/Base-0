@@ -7,6 +7,8 @@ export interface SendProjectMessageParams {
   tasksSummary?: string;
   messages: ProjectChatMessage[];
   languageMode?: "simple" | "technical";
+  clientTime?: string;
+  timezone?: string;
   onChunk: (accumulatedText: string) => void;
   onDone: (finalText: string) => void;
   onError: (error: string) => void;
@@ -46,6 +48,11 @@ function buildProjectAssistantPrompt(
   tasksSummary?: string,
   languageMode: "simple" | "technical" = "simple"
 ): string {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  let dateStr = now.toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
   const languageDirective =
     languageMode === "technical"
       ? `4. MODO DE LINGUAGEM: TÉCNICA E AVANÇADA
@@ -58,7 +65,13 @@ function buildProjectAssistantPrompt(
 
   return `
 Você é o ASSISTENTE ESPECIALISTA DE PROJETOS do aplicativo Base 0.
-Você é o consultor estratégico, copiloto e parceiro de execução dedicado EXCLUSIVAMENTE ao seguinte projeto:
+Você é o consultor estratégico, copiloto e parceiro de execução dedicado ao seguinte projeto:
+
+TEMPO E DATA EM TEMPO REAL:
+- Data de Hoje: ${dateStr}
+- Horário Atual Exato: ${timeStr}
+- Você possui CONSCIÊNCIA TEMPORAL PLENA do dia da semana, da data de hoje e da hora atual. Responda perguntas sobre que horas são, prazos e datas com exatidão!
+- Você pode utilizar a pesquisa na web para trazer dados frescos e atualizações do mercado e tecnologia.
 
 📋 FICHA DO PROJETO:
 - NOME DO PROJETO: "${projectName || "Projeto Sem Título"}"
@@ -73,7 +86,9 @@ DIRETRIZES DO ASSISTENTE DE PROJETO:
    - Ajude o usuário a debater ideias, montar planos de ação, criar cronogramas, escrever textos, debugar problemas, organizar tarefas e tomar decisões assertivas.
 2. MULTIMODALIDADE (ÁUDIO E IMAGEM):
    - Se o usuário enviou uma gravação de áudio ou imagem (mockups, rascunhos, telas, documentos), analise minuciosamente o conteúdo visual ou falado e conecte-o diretamente aos objetivos do projeto.
-3. ESTILO DE COMUNICAÇÃO:
+3. CONSCIÊNCIA DE TEMPO E PESQUISA:
+   - Responda sobre prazos, que horas são e datas com precisão absoluta.
+4. ESTILO DE COMUNICAÇÃO:
    - Português brasileiro claro, dinâmico, motivador e prestativo.
    - Use formatação limpa: **negrito** para termos-chave, parágrafos concisos e listas com marcadores para passos práticos.
    - Evite enrolação; seja prático, inteligente e proponha soluções úteis.
@@ -142,6 +157,9 @@ export const ProjectAiService = {
       const streamEndpoints = ["/api/project/chat/stream", "/api/project/stream"];
       let response: Response | null = null;
 
+      const clientTime = params.clientTime || new Date().toISOString();
+      const timezone = params.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       for (const endpoint of streamEndpoints) {
         try {
           const res = await fetch(endpoint, {
@@ -156,6 +174,8 @@ export const ProjectAiService = {
               tasksSummary,
               messages,
               languageMode,
+              clientTime,
+              timezone,
             }),
           });
           if (res.ok && res.body) {
@@ -226,6 +246,8 @@ export const ProjectAiService = {
           tasksSummary,
           messages,
           languageMode,
+          clientTime: params.clientTime || new Date().toISOString(),
+          timezone: params.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
 

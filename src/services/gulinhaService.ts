@@ -44,6 +44,8 @@ export interface UserFitnessContext {
   recentWorkoutLogs?: string;
   userNotesSummary?: string;
   productivitySummary?: string;
+  clientTime?: string;
+  timezone?: string;
 }
 
 export interface AnalyzedMealResult {
@@ -92,9 +94,20 @@ const CANDIDATE_MODELS = [
 ];
 
 function buildSystemPrompt(userContext?: UserFitnessContext): string {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  let dateStr = now.toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
   return `
 Você é o GULINHA, mascote, mentor e parceiro de treino do aplicativo "Base 0".
 Sua identidade visual é um pássaro estilo cartoon 3D, simpático, fofo, gordinho e engraçado, que usa regata azul e fita de treino, sempre animado para puxar ferro e comer bem.
+
+TEMPO E DATA EM TEMPO REAL:
+- Data de Hoje: ${dateStr}
+- Horário Atual Exato: ${timeStr}
+- Você tem total consciência de tempo, dia da semana, mês, ano e hora. Responda perguntas sobre que horas são ou que dia é hoje com alegria e precisão!
+- Você pode consultar informações atualizadas na web sobre alimentos, receitas e artigos.
 
 RESTRIÇÃO DE ESCOPO E ACESSO (MUITO IMPORTANTE - REGRA INVIOLÁVEL):
 - O Gulinha tem acesso EXCLUSIVAMENTE às informações que dizem respeito à aba GYM:
@@ -106,6 +119,8 @@ RESTRIÇÃO DE ESCOPO E ACESSO (MUITO IMPORTANTE - REGRA INVIOLÁVEL):
   6. Metas físicas e biometria pertinentes ao treino (altura, peso atual, peso alvo, objetivo de treino, TMB, GET e IMC).
 - O Gulinha NÃO tem acesso a notas pessoais, anotações de estudo, tarefas de checklist da vida, senhas, finanças ou qualquer outra área fora da aba GYM do aplicativo.
 - Se o usuário perguntar sobre suas anotações pessoais, estudos, tarefas diárias ou assuntos alheios à academia/dieta, responda de forma bem-humorada, carismática e descontraída: lembre que você é o mascote do GYM ("meu negócio é anilha, comida boa e descanso!") e que não tem acesso a nada fora do mundo dos treinos e nutrição da aba GYM.
+- NOTA SOBRE DATA E HORA: Responder que horas são, que dia é hoje ou a data atual é 100% PERMITIDO e você DEVE responder com precisão cirúrgica e alegria usando a referência temporal informada acima.
+- NOTA SOBRE PESQUISA NA WEB: Você tem permissão para pesquisar na web em tempo real sobre tabelas de alimentos, suplementos, estudos de hipertrofia, cotações e tirar dúvidas do momento.
 
 DIRETRIZES DE ESTILO E PERSONALIDADE:
 1. PERSONALIDADE CARISMÁTICA, GORDINHA E ENGRAÇADA:
@@ -185,12 +200,19 @@ export const GulinhaService = {
     userContext: UserFitnessContext | undefined,
     onChunk: (chunk: string, accumulated: string) => void
   ): Promise<string> {
+    // Prepare userContext with client real-time temporal markers
+    const enrichedContext: UserFitnessContext = {
+      ...userContext,
+      clientTime: userContext?.clientTime || new Date().toISOString(),
+      timezone: userContext?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
+
     // 1. Try server SSE streaming endpoint first
     try {
       const res = await fetch("/api/gulinha/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages, userContext }),
+        body: JSON.stringify({ messages, userContext: enrichedContext }),
       });
 
       if (res.ok && res.body) {
@@ -235,7 +257,7 @@ export const GulinhaService = {
     }
 
     // 2. Fallback: call standard chat, then typewriter stream it smoothly
-    const fullReply = await this.chat(messages, userContext);
+    const fullReply = await this.chat(messages, enrichedContext);
     
     // Smooth, fast simulated typewriter for fallback
     const words = fullReply.split(/(\s+)/);
@@ -254,12 +276,18 @@ export const GulinhaService = {
    * Send messages to Gulinha AI Chat
    */
   async chat(messages: ChatMessagePayload[], userContext?: UserFitnessContext): Promise<string> {
+    const enrichedContext: UserFitnessContext = {
+      ...userContext,
+      clientTime: userContext?.clientTime || new Date().toISOString(),
+      timezone: userContext?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
+
     // 1. Attempt server-side API first
     try {
       const res = await fetch("/api/gulinha/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages, userContext }),
+        body: JSON.stringify({ messages, userContext: enrichedContext }),
       });
 
       const contentType = res.headers.get("content-type") || "";

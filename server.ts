@@ -99,6 +99,18 @@ async function generateWithModelFallback(ai: GoogleGenAI, params: any, customMod
       }
     }
   }
+
+  // Graceful fallback: If search tools caused an issue, retry without tools
+  if (params.config?.tools && params.config.tools.length > 0) {
+    console.warn("Tentando geração de conteúdo sem tools (fallback)...");
+    const { tools, ...restConfig } = params.config;
+    try {
+      return await generateWithModelFallback(ai, { ...params, config: restConfig }, candidateModels);
+    } catch {
+      // keep original lastErr
+    }
+  }
+
   throw lastErr;
 }
 
@@ -163,13 +175,86 @@ async function generateStreamWithModelFallback(ai: GoogleGenAI, params: any, cus
       }
     }
   }
+
+  // Graceful fallback: If search tools caused a stream issue, retry without tools
+  if (params.config?.tools && params.config.tools.length > 0) {
+    console.warn("Tentando streaming sem tools (fallback)...");
+    const { tools, ...restConfig } = params.config;
+    try {
+      return await generateStreamWithModelFallback(ai, { ...params, config: restConfig }, candidateModels);
+    } catch {
+      // keep original lastErr
+    }
+  }
+
   throw lastErr;
 }
 
+/**
+ * Generates an authoritative real-time date and time prompt for both Gulinha and Project Assistants
+ */
+function formatTemporalContext(clientIso?: string, timezone?: string): string {
+  let tz = timezone && typeof timezone === "string" && timezone.includes("/") ? timezone : "America/Sao_Paulo";
+  let now: Date;
+  if (clientIso && typeof clientIso === "string") {
+    const parsed = new Date(clientIso);
+    now = isNaN(parsed.getTime()) ? new Date() : parsed;
+  } else {
+    now = new Date();
+  }
+
+  let fullDateStr = "";
+  let fullTimeStr = "";
+
+  try {
+    const df = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: tz,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const tf = new Intl.DateTimeFormat("pt-BR", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    fullDateStr = df.format(now);
+    fullTimeStr = tf.format(now);
+  } catch {
+    tz = "America/Sao_Paulo";
+    fullDateStr = now.toLocaleDateString("pt-BR", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    fullTimeStr = now.toLocaleTimeString("pt-BR");
+  }
+
+  fullDateStr = fullDateStr.charAt(0).toUpperCase() + fullDateStr.slice(1);
+
+  return `
+TEMPO E DATA EM TEMPO REAL (MANDATÓRIO & CONSCIÊNCIA TEMPORAL):
+- Data de Hoje: ${fullDateStr}
+- Horário Atual Exato: ${fullTimeStr}
+- Fuso Horário de Referência: ${tz}
+- Você possui CONSCIÊNCIA TOTAL E PRECISA da data, do dia da semana e da hora atual.
+- Quando o usuário perguntar "que horas são?", "que dia é hoje?", "qual a data de hoje?" ou fizer menção a prazos/datas ("hoje", "ontem", "amanhã", "este mês"), responda com exatidão e clareza absoluta baseando-se nestes dados em tempo real.
+- Você tem ACESSO À PESQUISA NA WEB (Google Search) em tempo real. Use a pesquisa sempre que precisar consultar fatos recentes, notícias de última hora, artigos científicos, tabelas nutricionais, cotações ou tirar dúvidas do momento.
+`;
+}
+
 function buildGulinhaContextPrompt(userContext: any): string {
+  const temporalRef = formatTemporalContext(userContext?.clientTime, userContext?.timezone);
+
   return `
 Você é o GULINHA, mascote, mentor e parceiro de treino do aplicativo "Base 0".
 Sua identidade visual é um pássaro estilo cartoon 3D, simpático, fofo, gordinho e engraçado, que usa regata azul e fita de treino, sempre animado para puxar ferro e comer bem.
+
+${temporalRef}
 
 RESTRIÇÃO DE ESCOPO E ACESSO (MUITO IMPORTANTE - REGRA INVIOLÁVEL):
 - O Gulinha tem acesso EXCLUSIVAMENTE às informações que dizem respeito à aba GYM:
@@ -181,6 +266,8 @@ RESTRIÇÃO DE ESCOPO E ACESSO (MUITO IMPORTANTE - REGRA INVIOLÁVEL):
   6. Metas físicas e biometria pertinentes ao treino (altura, peso atual, peso alvo, objetivo de treino, TMB, GET e IMC).
 - O Gulinha NÃO tem acesso a notas pessoais, anotações de estudo, tarefas de checklist da vida, senhas, finanças ou qualquer outra área fora da aba GYM do aplicativo.
 - Se o usuário perguntar sobre suas anotações pessoais, estudos, tarefas diárias ou assuntos alheios à academia/dieta, responda de forma bem-humorada, carismática e descontraída: lembre que você é o mascote do GYM ("meu negócio é anilha, comida boa e descanso!") e que não tem acesso a nada fora do mundo dos treinos e nutrição da aba GYM.
+- NOTA MANDATÓRIA SOBRE DATA E HORA: Responder que horas são, que dia da semana é hoje ou a data atual é 100% PERMITIDO e você DEVE responder com precisão cirúrgica e alegria usando a REFERÊNCIA TEMPORAL informada acima. Nunca diga que não sabe que horas são ou que dia é hoje!
+- NOTA MANDATÓRIA SOBRE PESQUISA NA WEB: Você tem permissão e ferramenta de busca no Google para pesquisar na web em tempo real sobre tabelas de alimentos, suplementos, estudos de hipertrofia, cotações e tirar dúvidas que o usuário perguntar.
 
 DIRETRIZES DE ESTILO E PERSONALIDADE:
 1. PERSONALIDADE CARISMÁTICA, GORDINHA E ENGRAÇADA:
@@ -264,9 +351,10 @@ app.post(["/api/gulinha/chat/stream", "/api/gulinha/stream"], async (req, res) =
       config: {
         systemInstruction: contextPrompt,
         temperature: 0.7,
+        tools: [{ googleSearch: {} }],
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
-    });
+    }, ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]);
 
     for await (const chunk of streamResponse) {
       const text = chunk.text;
@@ -316,8 +404,9 @@ app.post("/api/gulinha/chat", async (req, res) => {
       config: {
         systemInstruction: contextPrompt,
         temperature: 0.7,
+        tools: [{ googleSearch: {} }],
       },
-    });
+    }, ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]);
 
     const reply = response.text || "Desculpe, não consegui processar a resposta agora. Vamos tentar de novo!";
     return res.json({ reply });
@@ -497,8 +586,11 @@ function buildProjectAssistantPrompt(
   projectDescription: string,
   notesSummary?: string,
   tasksSummary?: string,
-  languageMode: "simple" | "technical" = "simple"
+  languageMode: "simple" | "technical" = "simple",
+  clientTime?: string,
+  timezone?: string
 ): string {
+  const temporalRef = formatTemporalContext(clientTime, timezone);
   const languageDirective =
     languageMode === "technical"
       ? `4. MODO DE LINGUAGEM: TÉCNICA E AVANÇADA
@@ -511,7 +603,9 @@ function buildProjectAssistantPrompt(
 
   return `
 Você é o ASSISTENTE ESPECIALISTA DE PROJETOS do aplicativo Base 0.
-Você é o consultor estratégico, copiloto e parceiro de execução dedicado EXCLUSIVAMENTE ao seguinte projeto:
+Você é o consultor estratégico, copiloto e parceiro de execução dedicado ao seguinte projeto:
+
+${temporalRef}
 
 📋 FICHA DO PROJETO:
 - NOME DO PROJETO: "${projectName || "Projeto Sem Título"}"
@@ -523,10 +617,13 @@ ${tasksSummary ? `\n✅ TAREFAS / METAS CADASTRADAS NO PROJETO:\n${tasksSummary}
 DIRETRIZES DO ASSISTENTE DE PROJETO:
 1. FOCO NO PROJETO:
    - Todo o seu diálogo deve considerar o contexto, objetivos, desafios e escopo descritos acima.
-   - Ajude o usuário a debater ideias, montar planos de ação, criar cronogramas, escrever textos, debugar problemas, organizar tarefas e tomar decisões assertivas.
+   - Ajude o usuário a debater ideias, montar planos de ação, criar cronogramas, prazos, escrever textos, debugar problemas, organizar tarefas e tomar decisões assertivas.
 2. MULTIMODALIDADE (ÁUDIO E IMAGEM):
    - Se o usuário enviou uma gravação de áudio ou imagem (mockups, rascunhos, telas, documentos), analise minuciosamente o conteúdo visual ou falado e conecte-o diretamente aos objetivos do projeto.
-3. ESTILO DE COMUNICAÇÃO:
+3. CONSCIÊNCIA TEMPORAL E PESQUISA NA WEB:
+   - Você tem ciência exata do dia da semana, da data atual e da hora. Responda perguntas sobre prazos, datas ou que horas são com total clareza e precisão.
+   - Você tem acesso à pesquisa na web do Google para trazer notícias atualizadas, tendências do mercado, documentações oficiais recentes e dados atualizados do momento.
+4. ESTILO DE COMUNICAÇÃO:
    - Português brasileiro claro, dinâmico, motivador e prestativo.
    - Use formatação limpa: **negrito** para termos-chave, parágrafos concisos e listas com marcadores para passos práticos.
    - Evite enrolação; seja prático, inteligente e proponha soluções úteis.
@@ -601,7 +698,7 @@ function formatProjectMessagesToContents(messages: any[]): any[] {
 // Project AI Chat Stream Endpoint
 app.post(["/api/project/chat/stream", "/api/project/stream"], async (req, res) => {
   try {
-    const { projectName, projectDescription, notesSummary, tasksSummary, messages, languageMode } = req.body;
+    const { projectName, projectDescription, notesSummary, tasksSummary, messages, languageMode, clientTime, timezone } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: "Mensagens inválidas." });
@@ -613,7 +710,9 @@ app.post(["/api/project/chat/stream", "/api/project/stream"], async (req, res) =
       projectDescription,
       notesSummary,
       tasksSummary,
-      languageMode === "technical" ? "technical" : "simple"
+      languageMode === "technical" ? "technical" : "simple",
+      clientTime,
+      timezone
     );
 
     const contents = formatProjectMessagesToContents(messages);
@@ -624,15 +723,16 @@ app.post(["/api/project/chat/stream", "/api/project/stream"], async (req, res) =
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders?.();
 
-    // Use resilient model fallback with fast Gemini 3 models
+    // Use resilient model fallback with Gemini 3 models and web search
     const streamResponse = await generateStreamWithModelFallback(ai, {
       contents,
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
+        tools: [{ googleSearch: {} }],
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
-    }, ["gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest"]);
+    }, ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]);
 
     for await (const chunk of streamResponse) {
       const text = chunk.text;
@@ -659,7 +759,7 @@ app.post(["/api/project/chat/stream", "/api/project/stream"], async (req, res) =
 // Project AI Chat Standard Endpoint (Fallback)
 app.post("/api/project/chat", async (req, res) => {
   try {
-    const { projectName, projectDescription, notesSummary, tasksSummary, messages, languageMode } = req.body;
+    const { projectName, projectDescription, notesSummary, tasksSummary, messages, languageMode, clientTime, timezone } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: "Mensagens inválidas." });
@@ -671,7 +771,9 @@ app.post("/api/project/chat", async (req, res) => {
       projectDescription,
       notesSummary,
       tasksSummary,
-      languageMode === "technical" ? "technical" : "simple"
+      languageMode === "technical" ? "technical" : "simple",
+      clientTime,
+      timezone
     );
 
     const contents = formatProjectMessagesToContents(messages);
@@ -681,8 +783,9 @@ app.post("/api/project/chat", async (req, res) => {
       config: {
         systemInstruction: systemPrompt,
         temperature: 0.7,
+        tools: [{ googleSearch: {} }],
       },
-    }, ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"]);
+    }, ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"]);
 
     const reply = response.text || "Não foi possível formular uma resposta agora para o projeto. Vamos tentar de novo!";
     return res.json({ reply });
